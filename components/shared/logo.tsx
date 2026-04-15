@@ -1,7 +1,7 @@
 export default function Logo() {
   return (
-    <div className="text-xl font-bold tracking-tight">
-      Ajike+
+    <div className="text-3xl font-bold tracking-tight text-black">
+      TEMPLATE
     </div>
   );
 }

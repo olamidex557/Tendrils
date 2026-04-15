@@ -1,21 +1,156 @@
+"use client";
+
 import Link from "next/link";
+import { Menu, Search, ShoppingCart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import Logo from "@/components/shared/logo";
+import { useCartStore } from "@/store/cart-store";
+
+const navLinks = [
+  { label: "Products", href: "/products" },
+  { label: "Categories", href: "/categories/electronics" },
+  { label: "Track Order", href: "/order-tracking" },
+  { label: "Admin", href: "/admin" },
+];
 
 export default function Navbar() {
-  return (
-    <header className="border-b">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link href="/">
-          <Logo />
-        </Link>
+  const itemCount = useCartStore((state) => state.getItemCount());
 
-        <nav className="flex items-center gap-6 text-sm">
-          <Link href="/products">Products</Link>
-          <Link href="/cart">Cart</Link>
-          <Link href="/order-tracking">Track Order</Link>
-          <Link href="/admin">Admin</Link>
-        </nav>
+  return (
+    <header className="sticky top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur">
+      <div className="mx-auto max-w-7xl px-4 py-4 md:px-6">
+        <div className="flex items-center gap-4">
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+
+              <SheetContent side="left" className="w-[280px]">
+                <div className="mt-8 flex flex-col gap-5">
+                  <Logo />
+                  <nav className="flex flex-col gap-4 text-sm">
+                    {navLinks.map((link) => (
+                      <Link
+                        key={link.label}
+                        href={link.href}
+                        className="text-stone-700 transition hover:text-black"
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </nav>
+
+                  <Button asChild className="rounded-full">
+                    <Link href="/cart">Go to Cart</Link>
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+
+          <div className="shrink-0">
+            <Link href="/">
+              <Logo />
+            </Link>
+          </div>
+
+          <div className="hidden flex-1 md:block">
+            <div className="relative mx-auto max-w-md lg:max-w-lg">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+              <Input
+                type="search"
+                placeholder="Search products in Ajike+"
+                className="h-11 rounded-full border-black/10 bg-stone-50 pl-10 pr-4 shadow-none focus-visible:ring-1 focus-visible:ring-black/20"
+              />
+            </div>
+          </div>
+
+          <nav className="hidden items-center gap-6 md:flex">
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                className="text-sm text-stone-700 transition hover:text-black"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-2 md:ml-0">
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              className="relative rounded-full"
+            >
+              <Link href="/cart" aria-label="Cart">
+                <ShoppingCart className="h-5 w-5" />
+                {itemCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1 text-[10px] text-white">
+                    {itemCount}
+                  </span>
+                ) : null}
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 md:hidden">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+            <Input
+              type="search"
+              placeholder="Search products in Ajike+"
+              className="h-11 rounded-full border-black/10 bg-stone-50 pl-10 pr-4 shadow-none focus-visible:ring-1 focus-visible:ring-black/20"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 hidden items-center gap-3 overflow-x-auto border-t border-black/5 pt-4 md:flex">
+          <CategoryPill href="/categories/all" label="All Categories" active />
+          <CategoryPill href="/categories/deals" label="All Discounts" />
+          <CategoryPill href="/categories/electronics" label="Electronics" />
+          <CategoryPill href="/categories/fashion" label="Fashion" />
+          <CategoryPill href="/categories/grocery" label="Grocery" />
+          <CategoryPill href="/categories/sports" label="Sports" />
+          <CategoryPill href="/categories/school-supplies" label="School Supplies" />
+          <CategoryPill href="/categories/toys" label="Toys" />
+          <CategoryPill href="/categories/books" label="Books" />
+        </div>
       </div>
     </header>
+  );
+}
+
+function CategoryPill({
+  href,
+  label,
+  active = false,
+}: {
+  href: string;
+  label: string;
+  active?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`whitespace-nowrap rounded-full px-4 py-2 text-sm transition ${
+        active
+          ? "bg-black text-white"
+          : "bg-stone-100 text-stone-700 hover:bg-stone-200 hover:text-black"
+      }`}
+    >
+      {label}
+    </Link>
   );
 }
