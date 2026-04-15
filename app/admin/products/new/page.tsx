@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createProduct } from "@/lib/actions/products";
 
 type ProductType = "simple" | "variable";
 
@@ -33,9 +34,19 @@ type VariantRow = {
   status: "Active" | "Inactive";
 };
 
-const attributePresets = ["Size", "Color", "Storage", "Weight", "Volume", "Material"];
+const attributePresets = [
+  "Size",
+  "Color",
+  "Storage",
+  "Weight",
+  "Volume",
+  "Material",
+];
 
 export default function AdminNewProductPage() {
+  const [isPending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
+
   const [form, setForm] = useState({
     name: "",
     category: "Electronics",
@@ -158,7 +169,9 @@ export default function AdminNewProductPage() {
       return {
         id: makeId(),
         label,
-        sku: `${(form.sku || "AJK").replace(/\s+/g, "-").toUpperCase()}-${skuSuffix}`,
+        sku: `${(form.sku || "AJK")
+          .replace(/\s+/g, "-")
+          .toUpperCase()}-${skuSuffix}`,
         price: "",
         stock: "",
         status: "Active",
@@ -168,17 +181,90 @@ export default function AdminNewProductPage() {
     setVariants(generated);
   }
 
+  function resetForm() {
+    setForm({
+      name: "",
+      category: "Electronics",
+      price: "",
+      comparePrice: "",
+      stock: "",
+      sku: "",
+      status: "Published",
+      imageUrl: "",
+      shortDescription: "",
+      description: "",
+      productType: "simple",
+    });
+
+    setAttributes([{ id: makeId(), name: "", values: "" }]);
+    setVariants([]);
+  }
+
+  function mapVariantStatus(
+    status: "Active" | "Inactive"
+  ): "active" | "inactive" {
+    return status === "Active" ? "active" : "inactive";
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setMessage("");
 
-    const payload = {
-      ...form,
-      attributes: form.productType === "variable" ? normalizedAttributes : [],
-      variants: form.productType === "variable" ? variants : [],
-    };
+    startTransition(async () => {
+      try {
+        const payload =
+          form.productType === "simple"
+            ? {
+                name: form.name.trim(),
+                category: form.category,
+                short_description: form.shortDescription.trim() || undefined,
+                description: form.description.trim() || undefined,
+                image_url: form.imageUrl.trim() || undefined,
+                status: mapProductStatus(form.status),
+                product_type: "simple" as const,
+                base_price: form.price ? Number(form.price) : null,
+                compare_price: form.comparePrice
+                  ? Number(form.comparePrice)
+                  : null,
+                stock_quantity: form.stock ? Number(form.stock) : null,
+                sku: form.sku.trim() || null,
+                is_featured: false,
+              }
+            : {
+                name: form.name.trim(),
+                category: form.category,
+                short_description: form.shortDescription.trim() || undefined,
+                description: form.description.trim() || undefined,
+                image_url: form.imageUrl.trim() || undefined,
+                status: mapProductStatus(form.status),
+                product_type: "variable" as const,
+                base_price: null,
+                compare_price: null,
+                stock_quantity: null,
+                sku: form.sku.trim() || null,
+                is_featured: false,
+                attributes: normalizedAttributes,
+                variants: variants
+                  .filter((variant) => variant.label.trim())
+                  .map((variant) => ({
+                    label: variant.label.trim(),
+                    sku: variant.sku.trim() || null,
+                    price: variant.price ? Number(variant.price) : null,
+                    stock_quantity: variant.stock ? Number(variant.stock) : 0,
+                    status: mapVariantStatus(variant.status),
+                  })),
+              };
 
-    console.log("New product payload:", payload);
-    alert("UI complete. Backend connection comes next.");
+        await createProduct(payload);
+
+        setMessage("Product created successfully.");
+        resetForm();
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to create product.";
+        setMessage(errorMessage);
+      }
+    });
   }
 
   return (
@@ -203,18 +289,29 @@ export default function AdminNewProductPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="rounded-full px-5">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full px-5"
+              disabled
+            >
               <Save className="mr-2 h-4 w-4" />
               Save Draft
             </Button>
-            <Button className="rounded-full bg-black px-5 text-white hover:bg-black/90">
-              Publish Product
+            <Button
+              type="submit"
+              form="new-product-form"
+              className="rounded-full bg-black px-5 text-white hover:bg-black/90"
+              disabled={isPending}
+            >
+              {isPending ? "Publishing..." : "Publish Product"}
             </Button>
           </div>
         </div>
       </div>
 
       <form
+        id="new-product-form"
         onSubmit={handleSubmit}
         className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]"
       >
@@ -247,6 +344,7 @@ export default function AdminNewProductPage() {
                     "Home Essentials",
                     "Grocery",
                     "Beauty",
+                    "Skincare",
                   ]}
                 />
 
@@ -387,9 +485,15 @@ export default function AdminNewProductPage() {
                             type="text"
                             value={attribute.name}
                             onChange={(e) =>
-                              handleAttributeChange(attribute.id, "name", e.target.value)
+                              handleAttributeChange(
+                                attribute.id,
+                                "name",
+                                e.target.value
+                              )
                             }
-                            placeholder={index === 0 ? "e.g. Size" : "e.g. Color"}
+                            placeholder={
+                              index === 0 ? "e.g. Size" : "e.g. Color"
+                            }
                             className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
                           />
                         </div>
@@ -402,7 +506,11 @@ export default function AdminNewProductPage() {
                             type="text"
                             value={attribute.values}
                             onChange={(e) =>
-                              handleAttributeChange(attribute.id, "values", e.target.value)
+                              handleAttributeChange(
+                                attribute.id,
+                                "values",
+                                e.target.value
+                              )
                             }
                             placeholder="Comma separated values, e.g. S, M, L"
                             className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
@@ -470,9 +578,12 @@ export default function AdminNewProductPage() {
               >
                 {variants.length === 0 ? (
                   <div className="rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
-                    <p className="text-sm font-medium text-black">No variants yet</p>
+                    <p className="text-sm font-medium text-black">
+                      No variants yet
+                    </p>
                     <p className="mt-2 text-sm text-stone-500">
-                      Add attributes above, then generate combinations or add manual rows.
+                      Add attributes above, then generate combinations or add
+                      manual rows.
                     </p>
 
                     <Button
@@ -488,7 +599,8 @@ export default function AdminNewProductPage() {
                 ) : (
                   <div className="space-y-4">
                     <div className="rounded-[1.25rem] bg-stone-50 px-4 py-3 text-sm text-stone-600">
-                      {variants.length} variant{variants.length > 1 ? "s" : ""} ready to configure
+                      {variants.length} variant
+                      {variants.length > 1 ? "s" : ""} ready to configure
                     </div>
 
                     {variants.map((variant) => (
@@ -516,26 +628,34 @@ export default function AdminNewProductPage() {
                           <MiniField
                             label="Variant Label"
                             value={variant.label}
-                            onChange={(value) => updateVariant(variant.id, "label", value)}
+                            onChange={(value) =>
+                              updateVariant(variant.id, "label", value)
+                            }
                             placeholder="e.g. Black / M"
                           />
                           <MiniField
                             label="SKU"
                             value={variant.sku}
-                            onChange={(value) => updateVariant(variant.id, "sku", value)}
+                            onChange={(value) =>
+                              updateVariant(variant.id, "sku", value)
+                            }
                             placeholder="e.g. AJK-BLK-M"
                           />
                           <MiniField
                             label="Price"
                             value={variant.price}
-                            onChange={(value) => updateVariant(variant.id, "price", value)}
+                            onChange={(value) =>
+                              updateVariant(variant.id, "price", value)
+                            }
                             placeholder="12000"
                             type="number"
                           />
                           <MiniField
                             label="Stock"
                             value={variant.stock}
-                            onChange={(value) => updateVariant(variant.id, "stock", value)}
+                            onChange={(value) =>
+                              updateVariant(variant.id, "stock", value)
+                            }
                             placeholder="8"
                             type="number"
                           />
@@ -548,7 +668,11 @@ export default function AdminNewProductPage() {
                           <select
                             value={variant.status}
                             onChange={(e) =>
-                              updateVariant(variant.id, "status", e.target.value)
+                              updateVariant(
+                                variant.id,
+                                "status",
+                                e.target.value
+                              )
                             }
                             className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
                           >
@@ -601,6 +725,12 @@ export default function AdminNewProductPage() {
             </div>
           </CardShell>
 
+          {message ? (
+            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700 shadow-sm">
+              {message}
+            </div>
+          ) : null}
+
           <div className="sticky bottom-4 z-10 rounded-[1.5rem] border border-black/5 bg-white p-4 shadow-lg">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -613,11 +743,20 @@ export default function AdminNewProductPage() {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Button type="button" variant="outline" className="rounded-full px-5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full px-5"
+                  disabled
+                >
                   Save Draft
                 </Button>
-                <Button type="submit" className="rounded-full bg-black px-5 text-white hover:bg-black/90">
-                  Publish Product
+                <Button
+                  type="submit"
+                  className="rounded-full bg-black px-5 text-white hover:bg-black/90"
+                  disabled={isPending}
+                >
+                  {isPending ? "Publishing..." : "Publish Product"}
                 </Button>
               </div>
             </div>
@@ -658,7 +797,8 @@ export default function AdminNewProductPage() {
                     {form.name || "Product Name"}
                   </h4>
                   <p className="mt-2 text-sm text-stone-500">
-                    {form.shortDescription || "Short product description preview"}
+                    {form.shortDescription ||
+                      "Short product description preview"}
                   </p>
                 </div>
 
@@ -693,10 +833,7 @@ export default function AdminNewProductPage() {
                 label="Attributes"
                 value={String(normalizedAttributes.length)}
               />
-              <SummaryRow
-                label="Variants"
-                value={String(variants.length)}
-              />
+              <SummaryRow label="Variants" value={String(variants.length)} />
               <SummaryRow label="Status" value={form.status} />
             </div>
           </CardShell>
@@ -707,7 +844,10 @@ export default function AdminNewProductPage() {
           >
             <ul className="space-y-3 text-sm leading-7 text-stone-600">
               <li>• Use simple products for one-price, one-stock items.</li>
-              <li>• Use variable products for size, color, storage, or volume options.</li>
+              <li>
+                • Use variable products for size, color, storage, or volume
+                options.
+              </li>
               <li>• Attribute values should be comma separated.</li>
               <li>• Generate variants after setting your attributes.</li>
               <li>• Each variant can have its own SKU, price, and stock.</li>
@@ -720,14 +860,22 @@ export default function AdminNewProductPage() {
               <h3 className="text-xl font-semibold">Next Step</h3>
             </div>
             <p className="mt-3 text-sm leading-7 text-white/80">
-              Once the UI feels right, we can connect products, attributes, and
-              variants to Supabase cleanly.
+              After creation works, the next move is replacing storefront mock
+              data with real Supabase products and categories.
             </p>
           </div>
         </div>
       </form>
     </section>
   );
+}
+
+function mapProductStatus(
+  status: string
+): "published" | "draft" | "out_of_stock" {
+  if (status === "Published") return "published";
+  if (status === "Draft") return "draft";
+  return "out_of_stock";
 }
 
 function CardShell({
@@ -783,9 +931,15 @@ function TypeCard({
     >
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-base font-semibold">{title}</h4>
-        <ChevronRight className={`h-4 w-4 ${active ? "text-white" : "text-stone-400"}`} />
+        <ChevronRight
+          className={`h-4 w-4 ${active ? "text-white" : "text-stone-400"}`}
+        />
       </div>
-      <p className={`mt-2 text-sm leading-6 ${active ? "text-white/80" : "text-stone-600"}`}>
+      <p
+        className={`mt-2 text-sm leading-6 ${
+          active ? "text-white/80" : "text-stone-600"
+        }`}
+      >
         {description}
       </p>
     </button>
@@ -813,7 +967,10 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={name} className="mb-2 block text-sm font-medium text-black">
+      <label
+        htmlFor={name}
+        className="mb-2 block text-sm font-medium text-black"
+      >
         {label}
       </label>
       <input
@@ -845,7 +1002,9 @@ function MiniField({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-black">{label}</label>
+      <label className="mb-2 block text-sm font-medium text-black">
+        {label}
+      </label>
       <input
         type={type}
         value={value}
@@ -874,7 +1033,10 @@ function SelectField({
 }) {
   return (
     <div>
-      <label htmlFor={name} className="mb-2 block text-sm font-medium text-black">
+      <label
+        htmlFor={name}
+        className="mb-2 block text-sm font-medium text-black"
+      >
         {label}
       </label>
       <select
@@ -898,7 +1060,9 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-2xl bg-stone-50 px-4 py-3">
       <span className="text-sm text-stone-600">{label}</span>
-      <span className="text-sm font-semibold capitalize text-black">{value}</span>
+      <span className="text-sm font-semibold capitalize text-black">
+        {value}
+      </span>
     </div>
   );
 }

@@ -1,0 +1,14 @@
+import { createClient } from "@/lib/supabase/server";
+
+export async function getVisibleCategories() {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("is_visible", true)
+    .order("name");
+
+  if (error) throw error;
+  return data;
+}

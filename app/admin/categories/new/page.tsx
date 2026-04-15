@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -12,8 +12,12 @@ import {
   Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createCategory } from "@/lib/actions/categories";
 
 export default function AdminNewCategoryPage() {
+  const [isPending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
+
   const [form, setForm] = useState({
     name: "",
     slug: "",
@@ -28,13 +32,30 @@ export default function AdminNewCategoryPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
     const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-      ...(name === "name" && !prev.slug
-        ? { slug: value.toLowerCase().replace(/\s+/g, "-") }
-        : {}),
-    }));
+
+    setForm((prev) => {
+      if (name === "name") {
+        const nextSlug =
+          prev.slug.trim().length === 0
+            ? value
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9\s-]/g, "")
+                .replace(/\s+/g, "-")
+            : prev.slug;
+
+        return {
+          ...prev,
+          name: value,
+          slug: nextSlug,
+        };
+      }
+
+      return {
+        ...prev,
+        [name]: value,
+      };
+    });
   }
 
   function handleCheckboxChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -44,8 +65,37 @@ export default function AdminNewCategoryPage() {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    console.log("New category payload:", form);
-    alert("Category form captured. Database wiring comes next.");
+    setMessage("");
+
+    startTransition(async () => {
+      try {
+        await createCategory({
+          name: form.name.trim(),
+          slug: form.slug.trim(),
+          description: form.description.trim() || undefined,
+          image_url: form.imageUrl.trim() || undefined,
+          parent_category_id: null,
+          is_featured: form.featured,
+          is_visible: form.visibility === "Visible",
+        });
+
+        setMessage("Category created successfully.");
+
+        setForm({
+          name: "",
+          slug: "",
+          description: "",
+          imageUrl: "",
+          parentCategory: "None",
+          visibility: "Visible",
+          featured: false,
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to create category.";
+        setMessage(errorMessage);
+      }
+    });
   }
 
   return (
@@ -70,18 +120,33 @@ export default function AdminNewCategoryPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="rounded-full px-5">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full px-5"
+              disabled
+            >
               <Save className="mr-2 h-4 w-4" />
               Save Draft
             </Button>
-            <Button className="rounded-full bg-black px-5 text-white hover:bg-black/90">
-              Publish Category
+
+            <Button
+              type="submit"
+              form="new-category-form"
+              className="rounded-full bg-black px-5 text-white hover:bg-black/90"
+              disabled={isPending}
+            >
+              {isPending ? "Publishing..." : "Publish Category"}
             </Button>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <form
+        id="new-category-form"
+        onSubmit={handleSubmit}
+        className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]"
+      >
         <div className="space-y-6">
           <CardShell
             icon={<FolderTree className="h-5 w-5 text-black" />}
@@ -121,8 +186,7 @@ export default function AdminNewCategoryPage() {
                   onChange={handleChange}
                   rows={5}
                   placeholder="Write a short category description..."
-                  className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none 
-transition focus:border-black/30"
+                  className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-black/30"
                 />
               </div>
 
@@ -132,7 +196,7 @@ transition focus:border-black/30"
                   name="parentCategory"
                   value={form.parentCategory}
                   onChange={handleChange}
-                  options={["None", "Electronics", "Fashion", "Home Essentials", "Sports"]}
+                  options={["None"]}
                 />
 
                 <SelectField
@@ -189,6 +253,12 @@ transition focus:border-black/30"
             </div>
           </CardShell>
 
+          {message ? (
+            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700 shadow-sm">
+              {message}
+            </div>
+          ) : null}
+
           <div className="sticky bottom-4 z-10 rounded-[1.5rem] border border-black/5 bg-white p-4 shadow-lg">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -201,11 +271,15 @@ transition focus:border-black/30"
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Button type="button" variant="outline" className="rounded-full px-5">
+                <Button type="button" variant="outline" className="rounded-full px-5" disabled>
                   Save Draft
                 </Button>
-                <Button type="submit" className="rounded-full bg-black px-5 text-white hover:bg-black/90">
-                  Publish Category
+                <Button
+                  type="submit"
+                  className="rounded-full bg-black px-5 text-white hover:bg-black/90"
+                  disabled={isPending}
+                >
+                  {isPending ? "Publishing..." : "Publish Category"}
                 </Button>
               </div>
             </div>
@@ -245,8 +319,7 @@ transition focus:border-black/30"
                   </h4>
 
                   {form.featured ? (
-                    <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs 
-font-medium text-amber-700">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
                       <Star className="h-3.5 w-3.5" />
                       Featured
                     </span>
@@ -346,8 +419,7 @@ function Field({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition 
-focus:border-black/30"
+        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
       />
     </div>
   );
@@ -378,8 +450,7 @@ function SelectField({
         name={name}
         value={value}
         onChange={onChange}
-        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition 
-focus:border-black/30"
+        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
       >
         {options.map((option) => (
           <option key={option} value={option}>
