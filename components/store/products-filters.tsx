@@ -1,6 +1,7 @@
 "use client";
 
 type ProductsFiltersProps = {
+  categories: string[];
   selectedCategory: string;
   selectedAvailability: string;
   maxPrice: number;
@@ -8,19 +9,11 @@ type ProductsFiltersProps = {
   onAvailabilityChange: (value: string) => void;
   onPriceChange: (value: number) => void;
   onReset: () => void;
+  hideCategoryFilter?: boolean;
 };
 
-const categories = [
-  "All",
-  "Electronics",
-  "Fashion",
-  "Grocery",
-  "Sports",
-  "Home Essentials",
-  "Beauty",
-];
-
 export default function ProductsFilters({
+  categories,
   selectedCategory,
   selectedAvailability,
   maxPrice,
@@ -28,6 +21,7 @@ export default function ProductsFilters({
   onAvailabilityChange,
   onPriceChange,
   onReset,
+  hideCategoryFilter = false,
 }: ProductsFiltersProps) {
   return (
     <aside className="space-y-8">
@@ -42,28 +36,30 @@ export default function ProductsFilters({
         </button>
       </div>
 
-      <div>
-        <h4 className="mb-3 font-medium text-stone-700">By Categories</h4>
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => {
-            const active = selectedCategory === category;
-            return (
-              <button
-                key={category}
-                type="button"
-                onClick={() => onCategoryChange(category)}
-                className={`rounded-full px-4 py-2 text-sm transition ${
-                  active
-                    ? "bg-black text-white"
-                    : "bg-stone-100 text-stone-700 hover:bg-stone-200 hover:text-black"
-                }`}
-              >
-                {category}
-              </button>
-            );
-          })}
+      {!hideCategoryFilter ? (
+        <div>
+          <h4 className="mb-3 font-medium text-stone-700">By Categories</h4>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => {
+              const active = selectedCategory === category;
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => onCategoryChange(category)}
+                  className={`rounded-full px-4 py-2 text-sm transition ${
+                    active
+                      ? "bg-black text-white"
+                      : "bg-stone-100 text-stone-700 hover:bg-stone-200 hover:text-black"
+                  }`}
+                >
+                  {category}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div>
         <h4 className="mb-3 font-medium text-stone-700">Price</h4>

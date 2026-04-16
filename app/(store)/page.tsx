@@ -1,18 +1,30 @@
-import HeroV2 from "@/components/store/hero-v2";
-import CategorySlider from "@/components/store/category-slider";
-import CategoriesShowcase from "@/components/store/category-showcase";
-import FeaturedProductsSection from "@/components/store/featured-products-section";
-import ProductHighlightSection from "@/components/store/product-highlight-section";
 import BrandStrip from "@/components/store/brand-strip";
+import HomepageHero from "@/components/store/homepage-hero";
+import HomepageCategories from "@/components/store/homepage-categories";
+import HomepageProducts from "@/components/store/homepage-products";
+import {
+  getActiveBanners,
+  getFeaturedCategories,
+  getFeaturedProducts,
+} from "@/lib/db/queries/storefront";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [banners, categories, products] = await Promise.all([
+    getActiveBanners(),
+    getFeaturedCategories(),
+    getFeaturedProducts(),
+  ]);
+
+  const heroBanner =
+    banners.find((banner) =>
+      banner.placement.toLowerCase().includes("hero")
+    ) ?? banners[0] ?? null;
+
   return (
     <main>
-      <HeroV2 />
-      <CategorySlider />
-      <CategoriesShowcase />
-      <FeaturedProductsSection />
-      <ProductHighlightSection />
+      <HomepageHero banner={heroBanner} />
+      <HomepageCategories categories={categories} />
+      <HomepageProducts products={products} />
       <BrandStrip />
     </main>
   );

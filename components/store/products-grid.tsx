@@ -3,14 +3,14 @@
 import ProductCard from "@/components/store/product-card";
 
 type Product = {
+  id: string;
   slug: string;
   name: string;
   price: number;
-  image: string;
-  badge?: string;
-  shortDescription?: string;
-  category?: string;
-  stock?: number;
+  imageUrl: string | null;
+  shortDescription: string | null;
+  categoryName: string | null;
+  stockQuantity: number;
 };
 
 type ProductsGridProps = {
@@ -48,21 +48,20 @@ export default function ProductsGrid({
         <div className="rounded-[1.5rem] border border-dashed border-stone-300 bg-white p-10 text-center">
           <h3 className="text-xl font-semibold text-black">No products found</h3>
           <p className="mt-2 text-sm text-stone-500">
-            Try adjusting your filters.
+            Try adjusting your filters or publish products from the admin dashboard.
           </p>
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {products.map((product) => (
             <ProductCard
-              key={product.slug}
+              key={product.id}
               id={product.slug}
               name={product.name}
               price={product.price}
-              image={product.image}
-              badge={product.badge}
-              description={product.shortDescription}
-              category={product.category}
+              image={product.imageUrl ?? ""}
+              description={product.shortDescription ?? undefined}
+              category={product.categoryName ?? undefined}
               href="/products"
             />
           ))}

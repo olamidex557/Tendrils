@@ -17,6 +17,7 @@ const navLinks = [
   { label: "Products", href: "/products" },
   { label: "Categories", href: "/categories" },
   { label: "Track Order", href: "/order-tracking" },
+  { label: "Admin", href: "/admin" },
 ];
 
 export default function Navbar() {
@@ -127,35 +128,12 @@ export default function Navbar() {
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <Input
               type="search"
-              placeholder="Search products in Template"
+              placeholder="Search products in Ajike+"
               className="h-11 rounded-full border-black/10 bg-stone-50 pl-10 pr-4 shadow-none focus-visible:ring-1 focus-visible:ring-black/20"
             />
           </div>
         </div>
       </div>
     </header>
-  );
-}
-
-function CategoryPill({
-  href,
-  label,
-  active = false,
-}: {
-  href: string;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`whitespace-nowrap rounded-full px-4 py-2 text-sm transition ${
-        active
-          ? "bg-black text-white"
-          : "bg-stone-100 text-stone-700 hover:bg-stone-200 hover:text-black"
-      }`}
-    >
-      {label}
-    </Link>
   );
 }

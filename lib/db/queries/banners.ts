@@ -1,14 +1,62 @@
-import { createClient } from "@/lib/supabase/server";
+"use server";
 
-export async function getActiveBanners() {
-  const supabase = await createClient();
+import { revalidatePath } from "next/cache";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
-  const { data, error } = await supabase
+type BannerInput = {
+  title: string;
+  subtitle?: string;
+  cta_text?: string;
+  cta_link?: string;
+  placement: string;
+  status: string;
+  image_url?: string;
+  priority?: number;
+  schedule_text?: string;
+};
+
+export async function createBanner(input: BannerInput) {
+  const { error } = await supabaseAdmin.from("banners").insert({
+    title: input.title,
+    subtitle: input.subtitle || null,
+    cta_text: input.cta_text || null,
+    cta_link: input.cta_link || null,
+    placement: input.placement,
+    status: input.status.toLowerCase(),
+    image_url: input.image_url || null,
+    priority: input.priority ?? 1,
+    schedule_text: input.schedule_text || null,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin/banners");
+  revalidatePath("/");
+}
+
+export async function updateBanner(bannerId: string, input: BannerInput) {
+  const { error } = await supabaseAdmin
     .from("banners")
-    .select("*")
-    .in("status", ["active", "scheduled"])
-    .order("priority", { ascending: true });
+    .update({
+      title: input.title,
+      subtitle: input.subtitle || null,
+      cta_text: input.cta_text || null,
+      cta_link: input.cta_link || null,
+      placement: input.placement,
+      status: input.status.toLowerCase(),
+      image_url: input.image_url || null,
+      priority: input.priority ?? 1,
+      schedule_text: input.schedule_text || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", bannerId);
 
-  if (error) throw error;
-  return data;
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin/banners");
+  revalidatePath("/");
 }
