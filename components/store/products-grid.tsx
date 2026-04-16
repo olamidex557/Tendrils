@@ -1,50 +1,73 @@
-import ProductCard from "@/components/store/product-card";
-import { products } from "@/lib/constants/products";
+"use client";
 
-export default function ProductsGrid() {
+import ProductCard from "@/components/store/product-card";
+
+type Product = {
+  slug: string;
+  name: string;
+  price: number;
+  image: string;
+  badge?: string;
+  shortDescription?: string;
+  category?: string;
+  stock?: number;
+};
+
+type ProductsGridProps = {
+  products: Product[];
+  sortBy: string;
+  onSortChange: (value: string) => void;
+};
+
+export default function ProductsGrid({
+  products,
+  sortBy,
+  onSortChange,
+}: ProductsGridProps) {
   return (
     <div>
-      {/* Top bar */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-stone-600">
-          Showing 1-{products.length} results
+          Showing {products.length} result{products.length !== 1 ? "s" : ""}
         </p>
 
-        <select className="rounded-full border px-3 py-2 text-sm">
-          <option>Default Sorting</option>
-          <option>Price Low → High</option>
-          <option>Price High → Low</option>
+        <select
+          value={sortBy}
+          onChange={(e) => onSortChange(e.target.value)}
+          className="rounded-full border px-4 py-2 text-sm"
+        >
+          <option value="default">Default Sorting</option>
+          <option value="price-asc">Price Low → High</option>
+          <option value="price-desc">Price High → Low</option>
+          <option value="name-asc">Name A → Z</option>
+          <option value="name-desc">Name Z → A</option>
         </select>
       </div>
 
-      {/* Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-        {products.map((product) => (
-          <ProductCard
-            key={product.slug}
-            id={product.slug}
-            name={product.name}
-            price={product.price}
-            image={product.image}
-            badge={product.badge}
-            description={product.shortDescription}
-            href="/products"
-          />
-        ))}
-      </div>
-
-      {/* Pagination */}
-      <div className="mt-10 flex justify-center gap-3">
-        <button className="h-10 w-10 rounded-full bg-black text-white">
-          1
-        </button>
-        <button className="h-10 w-10 rounded-full bg-stone-100">
-          2
-        </button>
-        <button className="h-10 w-10 rounded-full bg-stone-100">
-          3
-        </button>
-      </div>
+      {products.length === 0 ? (
+        <div className="rounded-[1.5rem] border border-dashed border-stone-300 bg-white p-10 text-center">
+          <h3 className="text-xl font-semibold text-black">No products found</h3>
+          <p className="mt-2 text-sm text-stone-500">
+            Try adjusting your filters.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          {products.map((product) => (
+            <ProductCard
+              key={product.slug}
+              id={product.slug}
+              name={product.name}
+              price={product.price}
+              image={product.image}
+              badge={product.badge}
+              description={product.shortDescription}
+              category={product.category}
+              href="/products"
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

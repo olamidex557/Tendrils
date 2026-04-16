@@ -8,7 +8,7 @@ export default function AdminHeader() {
       <div className="flex items-center justify-between gap-4 px-4 py-4 md:px-6">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
-            Ajike+ Admin
+            TEMPLATE Admin
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-black">
             Control Center

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Search, ShoppingCart } from "lucide-react";
+import { Heart, Menu, Search, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,16 +11,17 @@ import {
 } from "@/components/ui/sheet";
 import Logo from "@/components/shared/logo";
 import { useCartStore } from "@/store/cart-store";
+import { useWishlistStore } from "@/store/wishlist-store";
 
 const navLinks = [
   { label: "Products", href: "/products" },
-  { label: "Categories", href: "/categories/electronics" },
+  { label: "Categories", href: "/categories" },
   { label: "Track Order", href: "/order-tracking" },
-  { label: "Admin", href: "/admin" },
 ];
 
 export default function Navbar() {
   const itemCount = useCartStore((state) => state.getItemCount());
+  const wishlistCount = useWishlistStore((state) => state.getItemCount());
 
   return (
     <header className="sticky top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur">
@@ -93,6 +94,22 @@ export default function Navbar() {
               size="icon"
               className="relative rounded-full"
             >
+              <Link href="/wishlist" aria-label="Wishlist">
+                <Heart className="h-5 w-5" />
+                {wishlistCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1 text-[10px] text-white">
+                    {wishlistCount}
+                  </span>
+                ) : null}
+              </Link>
+            </Button>
+
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              className="relative rounded-full"
+            >
               <Link href="/cart" aria-label="Cart">
                 <ShoppingCart className="h-5 w-5" />
                 {itemCount > 0 ? (
@@ -110,22 +127,10 @@ export default function Navbar() {
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <Input
               type="search"
-              placeholder="Search products in Ajike+"
+              placeholder="Search products in Template"
               className="h-11 rounded-full border-black/10 bg-stone-50 pl-10 pr-4 shadow-none focus-visible:ring-1 focus-visible:ring-black/20"
             />
           </div>
-        </div>
-
-        <div className="mt-4 hidden items-center gap-3 overflow-x-auto border-t border-black/5 pt-4 md:flex">
-          <CategoryPill href="/categories/all" label="All Categories" active />
-          <CategoryPill href="/categories/deals" label="All Discounts" />
-          <CategoryPill href="/categories/electronics" label="Electronics" />
-          <CategoryPill href="/categories/fashion" label="Fashion" />
-          <CategoryPill href="/categories/grocery" label="Grocery" />
-          <CategoryPill href="/categories/sports" label="Sports" />
-          <CategoryPill href="/categories/school-supplies" label="School Supplies" />
-          <CategoryPill href="/categories/toys" label="Toys" />
-          <CategoryPill href="/categories/books" label="Books" />
         </div>
       </div>
     </header>

@@ -10,7 +10,7 @@ export default function Footer() {
                     <div className="grid gap-10 md:grid-cols-2 xl:grid-cols-4">
                         <div>
                             <div className="text-2xl font-bold tracking-tight text-black">
-                                Ajike+
+                                TEMPLATE
                             </div>
 
                             <p className="mt-5 max-w-xs text-sm leading-7 text-stone-600">
@@ -110,12 +110,12 @@ export default function Footer() {
                             <div className="mt-5 space-y-4 text-sm text-stone-600">
                                 <div className="flex items-start gap-3">
                                     <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#8d86f7]" />
-                                    <p>110 Governors Road, Ikotun, Lagos, Nigeria</p>
+                                    <p>Lorem ipsum vitae voluptatum alias eaque id eos delen</p>
                                 </div>
 
                                 <div className="flex items-center gap-3">
                                     <Mail className="h-4 w-4 shrink-0 text-[#8d86f7]" />
-                                    <p>info@ajikeplus.com</p>
+                                    <p>info@TEMPLATE.com</p>
                                 </div>
 
                                 <div className="flex items-center gap-3">

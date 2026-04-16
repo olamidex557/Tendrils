@@ -1,58 +1,107 @@
-export default function ProductsFilters() {
+"use client";
+
+type ProductsFiltersProps = {
+  selectedCategory: string;
+  selectedAvailability: string;
+  maxPrice: number;
+  onCategoryChange: (value: string) => void;
+  onAvailabilityChange: (value: string) => void;
+  onPriceChange: (value: number) => void;
+  onReset: () => void;
+};
+
+const categories = [
+  "All",
+  "Electronics",
+  "Fashion",
+  "Grocery",
+  "Sports",
+  "Home Essentials",
+  "Beauty",
+];
+
+export default function ProductsFilters({
+  selectedCategory,
+  selectedAvailability,
+  maxPrice,
+  onCategoryChange,
+  onAvailabilityChange,
+  onPriceChange,
+  onReset,
+}: ProductsFiltersProps) {
   return (
     <aside className="space-y-8">
-      <div>
+      <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Filter Options</h3>
+        <button
+          type="button"
+          onClick={onReset}
+          className="text-sm text-stone-500 transition hover:text-black"
+        >
+          Reset
+        </button>
       </div>
 
-      {/* Categories */}
       <div>
-        <h4 className="mb-3 font-medium text-stone-700">
-          By Categories
-        </h4>
-        <ul className="space-y-2 text-sm text-stone-600">
-          <li>Electronics</li>
-          <li>Fashion</li>
-          <li>Grocery</li>
-          <li>Sports</li>
-          <li>Home Essentials</li>
-        </ul>
+        <h4 className="mb-3 font-medium text-stone-700">By Categories</h4>
+        <div className="flex flex-wrap gap-2">
+          {categories.map((category) => {
+            const active = selectedCategory === category;
+            return (
+              <button
+                key={category}
+                type="button"
+                onClick={() => onCategoryChange(category)}
+                className={`rounded-full px-4 py-2 text-sm transition ${
+                  active
+                    ? "bg-black text-white"
+                    : "bg-stone-100 text-stone-700 hover:bg-stone-200 hover:text-black"
+                }`}
+              >
+                {category}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Price */}
       <div>
-        <h4 className="mb-3 font-medium text-stone-700">
-          Price
-        </h4>
-        <input type="range" className="w-full" />
+        <h4 className="mb-3 font-medium text-stone-700">Price</h4>
+        <input
+          type="range"
+          min={0}
+          max={500000}
+          step={5000}
+          value={maxPrice}
+          onChange={(e) => onPriceChange(Number(e.target.value))}
+          className="w-full"
+        />
         <p className="mt-2 text-sm text-stone-500">
-          ₦10,000 — ₦500,000
+          Up to ₦{maxPrice.toLocaleString()}
         </p>
       </div>
 
-      {/* Rating */}
       <div>
-        <h4 className="mb-3 font-medium text-stone-700">
-          Rating
-        </h4>
-        <ul className="space-y-2 text-sm">
-          <li>⭐⭐⭐⭐⭐</li>
-          <li>⭐⭐⭐⭐</li>
-          <li>⭐⭐⭐</li>
-        </ul>
-      </div>
-
-      {/* Availability */}
-      <div>
-        <h4 className="mb-3 font-medium text-stone-700">
-          Availability
-        </h4>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" /> In Stock
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" /> Out of Stock
-        </label>
+        <h4 className="mb-3 font-medium text-stone-700">Availability</h4>
+        <div className="flex flex-wrap gap-2">
+          {["All", "In Stock", "Out of Stock"].map((option) => {
+            const active = selectedAvailability === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => onAvailabilityChange(option)}
+                className={`rounded-full px-4 py-2 text-sm transition ${
+                  active
+                    ? "bg-black text-white"
+                    : "bg-stone-100 text-stone-700 hover:bg-stone-200 hover:text-black"
+                }`}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </aside>
   );

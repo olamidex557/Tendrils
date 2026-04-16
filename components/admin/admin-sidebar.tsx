@@ -34,7 +34,7 @@ export default function AdminSidebar() {
           <p className="text-xs uppercase tracking-[0.25em] text-white/60">
             Admin Panel
           </p>
-          <h2 className="mt-2 text-2xl font-semibold">Ajike+</h2>
+          <h2 className="mt-2 text-2xl font-semibold">TEMPLATE</h2>
         </div>
 
         <nav className="mt-8 space-y-2">

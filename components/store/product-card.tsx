@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart, Heart } from "lucide-react";
+import { Heart, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/store/cart-store";
+import { useWishlistStore } from "@/store/wishlist-store";
 
 type ProductCardProps = {
   id: string;
@@ -14,6 +15,7 @@ type ProductCardProps = {
   href?: string;
   badge?: string;
   description?: string;
+  category?: string;
 };
 
 export default function ProductCard({
@@ -24,8 +26,11 @@ export default function ProductCard({
   href = "/products",
   badge,
   description,
+  category,
 }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
+  const toggleWishlist = useWishlistStore((state) => state.toggleItem);
+  const isInWishlist = useWishlistStore((state) => state.isInWishlist(id));
 
   return (
     <div className="group overflow-hidden rounded-[1.5rem] border border-black/5 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
@@ -39,10 +44,23 @@ export default function ProductCard({
         <div className="absolute right-4 top-4 z-10 flex flex-col gap-2">
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-black shadow-sm transition hover:scale-105"
-            aria-label={`Save ${name}`}
+            onClick={() =>
+              toggleWishlist({
+                id,
+                slug: id,
+                name,
+                price,
+                image,
+                category,
+                description,
+              })
+            }
+            className={`flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-sm transition hover:scale-105 ${
+              isInWishlist ? "text-red-500" : "text-black"
+            }`}
+            aria-label={isInWishlist ? `Remove ${name} from wishlist` : `Save ${name} to wishlist`}
           >
-            <Heart className="h-4 w-4" />
+            <Heart className={`h-4 w-4 ${isInWishlist ? "fill-current" : ""}`} />
           </button>
 
           <button
@@ -54,6 +72,7 @@ export default function ProductCard({
                 name,
                 price,
                 image,
+                category,
               })
             }
             className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-black shadow-sm transition hover:scale-105"
@@ -74,6 +93,12 @@ export default function ProductCard({
 
       <div className="space-y-4 p-5">
         <div className="space-y-1">
+          {category ? (
+            <p className="text-xs uppercase tracking-wide text-stone-400">
+              {category}
+            </p>
+          ) : null}
+
           <Link
             href={`${href}/${id}`}
             className="line-clamp-1 text-lg font-semibold text-black transition hover:text-stone-700"
@@ -87,11 +112,9 @@ export default function ProductCard({
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xl font-bold tracking-tight text-black">
-              ₦{price.toLocaleString()}
-            </p>
-          </div>
+          <p className="text-xl font-bold tracking-tight text-black">
+            ₦{price.toLocaleString()}
+          </p>
 
           <Button
             onClick={() =>
@@ -101,6 +124,7 @@ export default function ProductCard({
                 name,
                 price,
                 image,
+                category,
               })
             }
             className="rounded-full bg-black px-5 text-white hover:bg-black/90"
