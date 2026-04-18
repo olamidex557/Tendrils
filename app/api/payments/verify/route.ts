@@ -1,46 +1,77 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getStoreRuntimeState } from "@/lib/storefront/runtime";
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const reference = searchParams.get("reference");
+  try {
+    const { searchParams } = new URL(req.url);
+    const reference = searchParams.get("reference");
 
-  if (!reference) {
-    return NextResponse.json({ error: "No reference" }, { status: 400 });
-  }
-
-  const res = await fetch(
-    `https://api.paystack.co/transaction/verify/${reference}`,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-      },
+    if (!reference) {
+      return NextResponse.json(
+        { error: "Missing payment reference." },
+        { status: 400 }
+      );
     }
-  );
 
-  const data = await res.json();
+    const settings = await getStoreRuntimeState();
 
-  if (!data.status || data.data.status !== "success") {
-    return NextResponse.json({ error: "Payment failed" }, { status: 400 });
+    if (settings.maintenanceMode) {
+      return NextResponse.json(
+        { error: "Payment verification is temporarily paused during maintenance." },
+        { status: 423 }
+      );
+    }
+
+    const { data: existingPayment } = await supabaseAdmin
+      .from("payments")
+      .select("id, status")
+      .eq("reference", reference)
+      .maybeSingle();
+
+    if (existingPayment?.status === "success") {
+      return NextResponse.json({ success: true, source: "database" });
+    }
+
+    const verifyResponse = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
+      }
+    );
+
+    const verifyData = await verifyResponse.json();
+
+    if (!verifyResponse.ok || !verifyData.status) {
+      return NextResponse.json(
+        { error: verifyData?.message || "Unable to verify payment." },
+        { status: 400 }
+      );
+    }
+
+    const transactionStatus = verifyData?.data?.status;
+
+    if (transactionStatus !== "success") {
+      return NextResponse.json(
+        {
+          error: `Payment is not successful yet. Current status: ${transactionStatus || "unknown"}.`,
+        },
+        { status: 409 }
+      );
+    }
+
+    return NextResponse.json({ success: true, source: "verify-api" });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unexpected verification error.",
+      },
+      { status: 500 }
+    );
   }
-
-  const amount = data.data.amount / 100;
-
-  // Save payment
-  await supabaseAdmin.from("payments").insert({
-    reference,
-    amount,
-    status: "success",
-  });
-
-  // Update order
-  await supabaseAdmin
-    .from("orders")
-    .update({
-      payment_status: "paid",
-      status: "processing",
-    })
-    .eq("order_number", reference);
-
-  return NextResponse.json({ success: true });
 }
