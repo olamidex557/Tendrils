@@ -38,20 +38,16 @@ export const getAdminCategoryById = cache(
     if (!identifier?.trim()) return null;
 
     const query = supabaseAdmin.from("categories").select(`
-        id,
-        name,
-        slug,
-        description,
-        image_url,
-        parent_category_id,
-        is_featured,
-        is_visible,
-        sort_order,
-        parent:categories!categories_parent_category_id_fkey (
-          id,
-          name
-        )
-      `);
+      id,
+      name,
+      slug,
+      description,
+      image_url,
+      parent_category_id,
+      is_featured,
+      is_visible,
+      sort_order
+    `);
 
     const { data, error } = isUuid(identifier)
       ? await query.eq("id", identifier).maybeSingle()
@@ -70,7 +66,7 @@ export const getAdminCategoryById = cache(
       description: data.description ?? null,
       imageUrl: data.image_url ?? null,
       parentCategoryId: data.parent_category_id ?? null,
-      parentCategoryName: data.parent?.name ?? null,
+      parentCategoryName: null,
       isFeatured: Boolean(data.is_featured),
       isVisible: Boolean(data.is_visible),
       sortOrder: data.sort_order ?? 100,
@@ -83,17 +79,17 @@ export const getAdminBannerById = cache(
     if (!identifier?.trim()) return null;
 
     const query = supabaseAdmin.from("banners").select(`
-        id,
-        title,
-        subtitle,
-        cta_text,
-        cta_link,
-        placement,
-        status,
-        image_url,
-        priority,
-        schedule_text
-      `);
+      id,
+      title,
+      subtitle,
+      cta_text,
+      cta_link,
+      placement,
+      status,
+      image_url,
+      priority,
+      schedule_text
+    `);
 
     const { data, error } = isUuid(identifier)
       ? await query.eq("id", identifier).maybeSingle()

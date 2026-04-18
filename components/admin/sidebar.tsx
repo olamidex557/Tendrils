@@ -1,16 +1,9 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Package,
   FolderTree,
   Image as ImageIcon,
-  ShoppingBag,
-  Users,
-  CreditCard,
-  BarChart3,
   Settings,
 } from "lucide-react";
 
@@ -36,26 +29,6 @@ const navItems = [
     icon: ImageIcon,
   },
   {
-    label: "Orders",
-    href: "/admin/orders",
-    icon: ShoppingBag,
-  },
-  {
-    label: "Customers",
-    href: "/admin/customers",
-    icon: Users,
-  },
-  {
-    label: "Payments",
-    href: "/admin/payments",
-    icon: CreditCard,
-  },
-  {
-    label: "Analytics",
-    href: "/admin/analytics",
-    icon: BarChart3,
-  },
-  {
     label: "Settings",
     href: "/admin/settings",
     icon: Settings,
@@ -63,38 +36,30 @@ const navItems = [
 ];
 
 export default function AdminSidebar() {
-  const pathname = usePathname();
-
   return (
     <aside className="h-fit rounded-[1.75rem] border border-black/5 bg-white p-4 shadow-sm">
-      <div className="border-b border-stone-200 px-3 pb-5 pt-2">
+      <div className="px-3 pb-4 pt-2">
         <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
           Admin Panel
         </p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-black">
           Ajike+
         </h2>
-        <p className="mt-2 text-sm leading-6 text-stone-500">
-          Manage storefront content, products, payments, and commerce data.
+        <p className="mt-2 text-sm text-stone-500">
+          Live deployment-ready sections only.
         </p>
       </div>
 
-      <nav className="mt-4 space-y-2">
+      <nav className="mt-3 space-y-2">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/admin" && pathname.startsWith(item.href));
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
-                isActive
-                  ? "bg-black text-white shadow-sm"
-                  : "text-stone-700 hover:bg-stone-100 hover:text-black"
-              }`}
+              className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-stone-700 transition 
+hover:bg-stone-100 hover:text-black"
             >
               <Icon className="h-4 w-4" />
               <span>{item.label}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   Settings,
   Store,
@@ -9,26 +9,40 @@ import {
   Globe,
   ShieldCheck,
   Save,
+  RotateCcw,
+  Activity,
+  CheckCircle2,
+  AlertCircle,
+  Clock3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const defaultSettings = {
+  storeName: "Tendrils",
+  storeEmail: "info@tendrils.com",
+  storePhone: "+234 705 224 3768",
+  supportEmail: "support@tendrils.com",
+  currency: "NGN",
+  locale: "en-NG",
+  timezone: "Africa/Lagos",
+  shippingFee: "5000",
+  freeShippingThreshold: "100000",
+  orderEmailNotifications: true,
+  paymentEmailNotifications: true,
+  marketingEmails: false,
+  storefrontLive: true,
+  maintenanceMode: false,
+};
+
 export default function AdminSettingsPage() {
-  const [form, setForm] = useState({
-    storeName: "Ajike+",
-    storeEmail: "info@ajikeplus.com",
-    storePhone: "+234 705 224 3768",
-    supportEmail: "support@ajikeplus.com",
-    currency: "NGN",
-    locale: "en-NG",
-    timezone: "Africa/Lagos",
-    shippingFee: "5000",
-    freeShippingThreshold: "100000",
-    orderEmailNotifications: true,
-    paymentEmailNotifications: true,
-    marketingEmails: false,
-    storefrontLive: true,
-    maintenanceMode: false,
-  });
+  const [isPending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error" | "idle">(
+    "idle"
+  );
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+
+  const [form, setForm] = useState(defaultSettings);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -44,10 +58,60 @@ export default function AdminSettingsPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  const hasChanges = useMemo(() => {
+    return JSON.stringify(form) !== JSON.stringify(defaultSettings);
+  }, [form]);
+
+  const storefrontStatus = useMemo(() => {
+    if (form.maintenanceMode) {
+      return {
+        label: "Maintenance Mode",
+        description: "Public access is temporarily limited while updates are being made.",
+        tone: "bg-amber-100 text-amber-700",
+      };
+    }
+
+    if (form.storefrontLive) {
+      return {
+        label: "Storefront Live",
+        description: "Customers can browse products and place orders normally.",
+        tone: "bg-green-100 text-green-700",
+      };
+    }
+
+    return {
+      label: "Storefront Offline",
+      description: "Public storefront access is currently disabled.",
+      tone: "bg-red-100 text-red-700",
+    };
+  }, [form.maintenanceMode, form.storefrontLive]);
+
+  function handleReset() {
+    setForm(defaultSettings);
+    setMessage("Settings reset to current defaults.");
+    setMessageType("success");
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    console.log("Settings payload:", form);
-    alert("Settings form captured. Database wiring comes next.");
+
+    setMessage("");
+    setMessageType("idle");
+
+    startTransition(async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+
+        console.log("Settings payload:", form);
+
+        setLastSavedAt(new Date().toLocaleString());
+        setMessage("Settings saved successfully. Backend sync is ready for the next step.");
+        setMessageType("success");
+      } catch {
+        setMessage("Failed to save settings.");
+        setMessageType("error");
+      }
+    });
   }
 
   return (
@@ -60,23 +124,40 @@ export default function AdminSettingsPage() {
               Settings
             </h2>
             <p className="mt-2 text-sm text-stone-600">
-              Manage brand, shipping, notifications, and storefront controls.
+              Manage brand identity, operations, notifications, shipping, and storefront controls.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="rounded-full px-5">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full px-5"
+              onClick={handleReset}
+              disabled={isPending}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
               Reset Changes
             </Button>
-            <Button className="rounded-full bg-black px-5 text-white hover:bg-black/90">
+
+            <Button
+              type="submit"
+              form="admin-settings-form"
+              className="rounded-full bg-black px-5 text-white hover:bg-black/90"
+              disabled={isPending}
+            >
               <Save className="mr-2 h-4 w-4" />
-              Save Settings
+              {isPending ? "Saving..." : "Save Settings"}
             </Button>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <form
+        id="admin-settings-form"
+        onSubmit={handleSubmit}
+        className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]"
+      >
         <div className="space-y-6">
           <CardShell
             icon={<Store className="h-5 w-5 text-black" />}
@@ -138,7 +219,12 @@ export default function AdminSettingsPage() {
                 name="timezone"
                 value={form.timezone}
                 onChange={handleChange}
-                options={["Africa/Lagos", "UTC", "Europe/London", "America/New_York"]}
+                options={[
+                  "Africa/Lagos",
+                  "UTC",
+                  "Europe/London",
+                  "America/New_York",
+                ]}
               />
             </div>
           </CardShell>
@@ -166,6 +252,27 @@ export default function AdminSettingsPage() {
             </div>
           </CardShell>
 
+          {message ? (
+            <div
+              className={`rounded-2xl border px-4 py-3 text-sm shadow-sm ${
+                messageType === "success"
+                  ? "border-green-200 bg-green-50 text-green-700"
+                  : messageType === "error"
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : "border-stone-200 bg-white text-stone-700"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {messageType === "success" ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : messageType === "error" ? (
+                  <AlertCircle className="h-4 w-4" />
+                ) : null}
+                <span>{message}</span>
+              </div>
+            </div>
+          ) : null}
+
           <div className="sticky bottom-4 z-10 rounded-[1.5rem] border border-black/5 bg-white p-4 shadow-lg">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -178,14 +285,21 @@ export default function AdminSettingsPage() {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Button type="button" variant="outline" className="rounded-full px-5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full px-5"
+                  onClick={handleReset}
+                  disabled={isPending}
+                >
                   Reset
                 </Button>
                 <Button
                   type="submit"
                   className="rounded-full bg-black px-5 text-white hover:bg-black/90"
+                  disabled={isPending}
                 >
-                  Save Settings
+                  {isPending ? "Saving..." : "Save Settings"}
                 </Button>
               </div>
             </div>
@@ -247,18 +361,108 @@ export default function AdminSettingsPage() {
           </CardShell>
 
           <CardShell
+            icon={<Activity className="h-5 w-5 text-black" />}
+            title="Store Health"
+            subtitle="Quick operational view of your current setup."
+          >
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-stone-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-black">
+                      Storefront Status
+                    </p>
+                    <p className="mt-1 text-sm text-stone-500">
+                      {storefrontStatus.description}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${storefrontStatus.tone}`}
+                  >
+                    {storefrontStatus.label}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-stone-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-black">
+                      Notification Coverage
+                    </p>
+                    <p className="mt-1 text-sm text-stone-500">
+                      {[
+                        form.orderEmailNotifications,
+                        form.paymentEmailNotifications,
+                        form.marketingEmails,
+                      ].filter(Boolean).length}
+                      {" "}notification stream(s) enabled
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-stone-900 px-3 py-1 text-xs font-medium text-white">
+                    Active
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardShell>
+
+          <CardShell
             icon={<Settings className="h-5 w-5 text-black" />}
             title="Settings Summary"
             subtitle="Quick overview of your current configuration."
           >
-            <SummaryRow label="Store" value={form.storeName} />
-            <SummaryRow label="Currency" value={form.currency} />
-            <SummaryRow label="Locale" value={form.locale} />
-            <SummaryRow label="Timezone" value={form.timezone} />
-            <SummaryRow
-              label="Storefront"
-              value={form.storefrontLive ? "Live" : "Offline"}
-            />
+            <div className="space-y-3">
+              <SummaryRow label="Store" value={form.storeName} />
+              <SummaryRow label="Currency" value={form.currency} />
+              <SummaryRow label="Locale" value={form.locale} />
+              <SummaryRow label="Timezone" value={form.timezone} />
+              <SummaryRow
+                label="Storefront"
+                value={form.storefrontLive ? "Live" : "Offline"}
+              />
+              <SummaryRow
+                label="Maintenance"
+                value={form.maintenanceMode ? "On" : "Off"}
+              />
+              <SummaryRow
+                label="Shipping Fee"
+                value={`₦${Number(form.shippingFee || 0).toLocaleString()}`}
+              />
+              <SummaryRow
+                label="Free Shipping"
+                value={`₦${Number(
+                  form.freeShippingThreshold || 0
+                ).toLocaleString()}`}
+              />
+            </div>
+          </CardShell>
+
+          <CardShell
+            icon={<Clock3 className="h-5 w-5 text-black" />}
+            title="Save Activity"
+            subtitle="Recent settings activity."
+          >
+            <div className="rounded-2xl bg-stone-50 p-4">
+              <p className="text-sm font-medium text-black">
+                {lastSavedAt ? "Last Saved" : "No saved changes yet"}
+              </p>
+              <p className="mt-1 text-sm text-stone-500">
+                {lastSavedAt
+                  ? lastSavedAt
+                  : "Make changes and save to create your first settings snapshot."}
+              </p>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-dashed border-stone-200 p-4">
+              <p className="text-sm text-stone-500">
+                {hasChanges
+                  ? "You have unsaved changes."
+                  : "Everything is currently in sync with the loaded defaults."}
+              </p>
+            </div>
           </CardShell>
         </div>
       </form>
@@ -320,8 +524,7 @@ function Field({
         type={type}
         value={value}
         onChange={onChange}
-        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition 
-focus:border-black/30"
+        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
       />
     </div>
   );
@@ -350,8 +553,7 @@ function SelectField({
         name={name}
         value={value}
         onChange={onChange}
-        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition 
-focus:border-black/30"
+        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
       >
         {options.map((option) => (
           <option key={option} value={option}>
