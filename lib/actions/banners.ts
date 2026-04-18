@@ -16,11 +16,30 @@ type BannerInput = {
 };
 
 export async function createBanner(input: BannerInput) {
-  console.log("createBanner received:", input);
+  const { error } = await supabaseAdmin.from("banners").insert({
+    title: input.title,
+    subtitle: input.subtitle || null,
+    cta_text: input.cta_text || null,
+    cta_link: input.cta_link || null,
+    placement: input.placement,
+    status: input.status.toLowerCase(),
+    image_url: input.image_url || null,
+    priority: input.priority ?? 1,
+    schedule_text: input.schedule_text || null,
+  });
 
-  const { data, error } = await supabaseAdmin
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin/banners");
+  revalidatePath("/");
+}
+
+export async function updateBanner(bannerId: string, input: BannerInput) {
+  const { error } = await supabaseAdmin
     .from("banners")
-    .insert({
+    .update({
       title: input.title,
       subtitle: input.subtitle || null,
       cta_text: input.cta_text || null,
@@ -30,11 +49,9 @@ export async function createBanner(input: BannerInput) {
       image_url: input.image_url || null,
       priority: input.priority ?? 1,
       schedule_text: input.schedule_text || null,
+      updated_at: new Date().toISOString(),
     })
-    .select();
-
-  console.log("Supabase banner insert data:", data);
-  console.log("Supabase banner insert error:", error);
+    .eq("id", bannerId);
 
   if (error) {
     throw new Error(error.message);

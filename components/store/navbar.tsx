@@ -1,14 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart, Menu, Search, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Logo from "@/components/shared/logo";
 import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore } from "@/store/wishlist-store";
@@ -17,12 +14,17 @@ const navLinks = [
   { label: "Products", href: "/products" },
   { label: "Categories", href: "/categories" },
   { label: "Track Order", href: "/order-tracking" },
-  { label: "Admin", href: "/admin" },
 ];
 
 export default function Navbar() {
+  const [mounted, setMounted] = useState(false);
+
   const itemCount = useCartStore((state) => state.getItemCount());
   const wishlistCount = useWishlistStore((state) => state.getItemCount());
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur">
@@ -97,7 +99,7 @@ export default function Navbar() {
             >
               <Link href="/wishlist" aria-label="Wishlist">
                 <Heart className="h-5 w-5" />
-                {wishlistCount > 0 ? (
+                {mounted && wishlistCount > 0 ? (
                   <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1 text-[10px] text-white">
                     {wishlistCount}
                   </span>
@@ -113,7 +115,7 @@ export default function Navbar() {
             >
               <Link href="/cart" aria-label="Cart">
                 <ShoppingCart className="h-5 w-5" />
-                {itemCount > 0 ? (
+                {mounted && itemCount > 0 ? (
                   <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1 text-[10px] text-white">
                     {itemCount}
                   </span>

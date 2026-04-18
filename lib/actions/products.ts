@@ -29,6 +29,8 @@ type ProductInput = {
   stock_quantity?: number | null;
   sku?: string | null;
   is_featured?: boolean;
+  is_visible?: boolean;
+  sort_order?: number;
   attributes?: ProductAttributeInput[];
   variants?: ProductVariantInput[];
 };
@@ -41,12 +43,8 @@ function slugify(value: string) {
     .replace(/\s+/g, "-");
 }
 
-export async function createProduct(input: ProductInput) {
-  console.log("createProduct received:", input);
-
-  let categoryId: string | null = null;
-
-  const normalizedCategorySlug = slugify(input.category);
+async function resolveCategoryId(category: string) {
+  const normalizedCategorySlug = slugify(category);
 
   const { data: categoryBySlug, error: categorySlugError } = await supabaseAdmin
     .from("categories")
@@ -59,24 +57,27 @@ export async function createProduct(input: ProductInput) {
   }
 
   if (categoryBySlug?.id) {
-    categoryId = categoryBySlug.id;
-  } else {
-    const { data: categoryByName, error: categoryNameError } = await supabaseAdmin
-      .from("categories")
-      .select("id")
-      .eq("name", input.category)
-      .maybeSingle();
-
-    if (categoryNameError) {
-      throw new Error(categoryNameError.message);
-    }
-
-    categoryId = categoryByName?.id ?? null;
+    return categoryBySlug.id;
   }
 
+  const { data: categoryByName, error: categoryNameError } = await supabaseAdmin
+    .from("categories")
+    .select("id")
+    .eq("name", category)
+    .maybeSingle();
+
+  if (categoryNameError) {
+    throw new Error(categoryNameError.message);
+  }
+
+  return categoryByName?.id ?? null;
+}
+
+export async function createProduct(input: ProductInput) {
+  const categoryId = await resolveCategoryId(input.category);
   const productSlug = slugify(input.name);
 
-    const { data: product, error: productError } = await supabaseAdmin
+  const { data: product, error: productError } = await supabaseAdmin
     .from("products")
     .insert({
       name: input.name,
@@ -93,57 +94,130 @@ export async function createProduct(input: ProductInput) {
       stock_quantity: input.stock_quantity ?? null,
       sku: input.sku ?? null,
       is_featured: input.is_featured ?? false,
+      is_visible: input.is_visible ?? true,
+      sort_order: input.sort_order ?? 100,
     })
     .select("id, slug")
     .single();
-
-  console.log("Supabase product insert data:", product);
-  console.log("Supabase product insert error:", productError);
 
   if (productError) {
     throw new Error(productError.message);
   }
 
   if (input.product_type === "variable" && input.attributes?.length) {
-    const { data: attributesData, error: attributesError } = await supabaseAdmin
-      .from("product_attributes")
-      .insert(
-        input.attributes.map((attribute) => ({
-          product_id: product.id,
-          name: attribute.name,
-          values: attribute.values,
-        }))
-      )
-      .select();
+    const { error } = await supabaseAdmin.from("product_attributes").insert(
+      input.attributes.map((attribute) => ({
+        product_id: product.id,
+        name: attribute.name,
+        values: attribute.values,
+      }))
+    );
 
-    console.log("Supabase attribute insert data:", attributesData);
-    console.log("Supabase attribute insert error:", attributesError);
-
-    if (attributesError) {
-      throw new Error(attributesError.message);
+    if (error) {
+      throw new Error(error.message);
     }
   }
 
   if (input.product_type === "variable" && input.variants?.length) {
-    const { data: variantsData, error: variantsError } = await supabaseAdmin
+    const { error } = await supabaseAdmin.from("product_variants").insert(
+      input.variants.map((variant) => ({
+        product_id: product.id,
+        label: variant.label,
+        sku: variant.sku ?? null,
+        price: variant.price ?? null,
+        stock_quantity: variant.stock_quantity ?? 0,
+        status: variant.status,
+      }))
+    );
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  revalidatePath("/admin/products");
+  revalidatePath("/products");
+  revalidatePath("/");
+}
+
+export async function updateProduct(productId: string, input: ProductInput) {
+  const categoryId = await resolveCategoryId(input.category);
+
+  const { error: productError } = await supabaseAdmin
+    .from("products")
+    .update({
+      name: input.name,
+      slug: slugify(input.name),
+      short_description: input.short_description || null,
+      description: input.description || null,
+      category_id: categoryId,
+      image_url: input.image_url || null,
+      status: input.status,
+      product_type: input.product_type,
+      price: input.base_price ?? null,
+      base_price: input.base_price ?? null,
+      compare_price: input.compare_price ?? null,
+      stock_quantity: input.stock_quantity ?? null,
+      sku: input.sku ?? null,
+      is_featured: input.is_featured ?? false,
+      is_visible: input.is_visible ?? true,
+      sort_order: input.sort_order ?? 100,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", productId);
+
+  if (productError) {
+    throw new Error(productError.message);
+  }
+
+  if (input.product_type === "variable") {
+    const { error: deleteAttributesError } = await supabaseAdmin
+      .from("product_attributes")
+      .delete()
+      .eq("product_id", productId);
+
+    if (deleteAttributesError) {
+      throw new Error(deleteAttributesError.message);
+    }
+
+    const { error: deleteVariantsError } = await supabaseAdmin
       .from("product_variants")
-      .insert(
+      .delete()
+      .eq("product_id", productId);
+
+    if (deleteVariantsError) {
+      throw new Error(deleteVariantsError.message);
+    }
+
+    if (input.attributes?.length) {
+      const { error } = await supabaseAdmin.from("product_attributes").insert(
+        input.attributes.map((attribute) => ({
+          product_id: productId,
+          name: attribute.name,
+          values: attribute.values,
+        }))
+      );
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+
+    if (input.variants?.length) {
+      const { error } = await supabaseAdmin.from("product_variants").insert(
         input.variants.map((variant) => ({
-          product_id: product.id,
+          product_id: productId,
           label: variant.label,
           sku: variant.sku ?? null,
           price: variant.price ?? null,
           stock_quantity: variant.stock_quantity ?? 0,
           status: variant.status,
         }))
-      )
-      .select();
+      );
 
-    console.log("Supabase variant insert data:", variantsData);
-    console.log("Supabase variant insert error:", variantsError);
-
-    if (variantsError) {
-      throw new Error(variantsError.message);
+      if (error) {
+        throw new Error(error.message);
+      }
     }
   }
 

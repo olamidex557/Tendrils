@@ -13,10 +13,12 @@ import {
   Layers3,
   Sparkles,
   ChevronRight,
+  Clock3,
   Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createProduct } from "@/lib/actions/products";
+import { updateProduct } from "@/lib/actions/products";
+import type { AdminEditProductRecord } from "@/lib/db/queries/admin-products";
 
 type ProductType = "simple" | "variable";
 
@@ -44,32 +46,53 @@ const attributePresets = [
   "Material",
 ];
 
-export default function AdminNewProductPage() {
+type EditProductFormProps = {
+  product: AdminEditProductRecord;
+};
+
+export default function EditProductForm({ product }: EditProductFormProps) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
 
   const [form, setForm] = useState({
-    name: "",
-    category: "Electronics",
-    price: "",
-    comparePrice: "",
-    stock: "",
-    sku: "",
-    status: "Published",
-    visibility: "Visible",
-    featured: false,
-    sortOrder: "100",
-    imageUrl: "",
-    shortDescription: "",
-    description: "",
-    productType: "simple" as ProductType,
+    name: product.name,
+    category: product.categoryName ?? "Electronics",
+    price: product.basePrice !== null ? String(product.basePrice) : "",
+    comparePrice:
+      product.comparePrice !== null ? String(product.comparePrice) : "",
+    stock:
+      product.stockQuantity !== null ? String(product.stockQuantity) : "",
+    sku: product.sku ?? "",
+    status: mapStatusToUi(product.status),
+    visibility: product.isVisible ? "Visible" : "Hidden",
+    featured: product.isFeatured,
+    sortOrder: String(product.sortOrder ?? 100),
+    imageUrl: product.imageUrl ?? "",
+    shortDescription: product.shortDescription ?? "",
+    description: product.description ?? "",
+    productType: product.productType as ProductType,
   });
 
-  const [attributes, setAttributes] = useState<AttributeRow[]>([
-    { id: makeId(), name: "", values: "" },
-  ]);
+  const [attributes, setAttributes] = useState<AttributeRow[]>(
+    product.attributes.length > 0
+      ? product.attributes.map((attribute) => ({
+          id: attribute.id,
+          name: attribute.name,
+          values: attribute.values.join(", "),
+        }))
+      : [{ id: makeId(), name: "", values: "" }]
+  );
 
-  const [variants, setVariants] = useState<VariantRow[]>([]);
+  const [variants, setVariants] = useState<VariantRow[]>(
+    product.variants.map((variant) => ({
+      id: variant.id,
+      label: variant.label,
+      sku: variant.sku ?? "",
+      price: variant.price !== null ? String(variant.price) : "",
+      stock: String(variant.stockQuantity ?? 0),
+      status: variant.status === "active" ? "Active" : "Inactive",
+    }))
+  );
 
   function handleChange(
     e: React.ChangeEvent<
@@ -193,28 +216,6 @@ export default function AdminNewProductPage() {
     setMessage("");
   }
 
-  function resetForm() {
-    setForm({
-      name: "",
-      category: "Electronics",
-      price: "",
-      comparePrice: "",
-      stock: "",
-      sku: "",
-      status: "Published",
-      visibility: "Visible",
-      featured: false,
-      sortOrder: "100",
-      imageUrl: "",
-      shortDescription: "",
-      description: "",
-      productType: "simple",
-    });
-
-    setAttributes([{ id: makeId(), name: "", values: "" }]);
-    setVariants([]);
-  }
-
   function mapVariantStatus(
     status: "Active" | "Inactive"
   ): "active" | "inactive" {
@@ -274,13 +275,11 @@ export default function AdminNewProductPage() {
                   })),
               };
 
-        await createProduct(payload);
-
-        setMessage("Product created successfully.");
-        resetForm();
+        await updateProduct(product.id, payload);
+        setMessage("Product updated successfully.");
       } catch (error) {
         const errorMessage =
-          error instanceof Error ? error.message : "Failed to create product.";
+          error instanceof Error ? error.message : "Failed to update product.";
         setMessage(errorMessage);
       }
     });
@@ -300,37 +299,32 @@ export default function AdminNewProductPage() {
             </Link>
 
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-black">
-              Add New Product
+              Edit Product
             </h2>
             <p className="mt-2 text-sm text-stone-600">
-              Create a storefront-ready product with visibility and homepage controls.
+              Update product information, storefront visibility, and ordering controls.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-full px-5"
-              disabled
-            >
+            <Button type="button" variant="outline" className="rounded-full px-5">
               <Save className="mr-2 h-4 w-4" />
-              Save Draft
+              Save Changes
             </Button>
             <Button
               type="submit"
-              form="new-product-form"
+              form="edit-product-form"
               className="rounded-full bg-black px-5 text-white hover:bg-black/90"
               disabled={isPending}
             >
-              {isPending ? "Publishing..." : "Publish Product"}
+              {isPending ? "Updating..." : "Update Product"}
             </Button>
           </div>
         </div>
       </div>
 
       <form
-        id="new-product-form"
+        id="edit-product-form"
         onSubmit={handleSubmit}
         className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]"
       >
@@ -338,7 +332,7 @@ export default function AdminNewProductPage() {
           <CardShell
             icon={<Package className="h-5 w-5 text-black" />}
             title="Product Information"
-            subtitle="Basic identity, category, and content."
+            subtitle="Update the core product details."
           >
             <div className="space-y-5">
               <Field
@@ -474,7 +468,7 @@ export default function AdminNewProductPage() {
               <CardShell
                 icon={<Layers3 className="h-5 w-5 text-black" />}
                 title="Attributes"
-                subtitle="Create reusable option groups for your variants."
+                subtitle="Update reusable option groups for this product."
               >
                 <div className="mb-5 flex flex-wrap gap-2">
                   {attributePresets.map((preset) => (
@@ -586,23 +580,20 @@ export default function AdminNewProductPage() {
                     onClick={generateVariantsFromAttributes}
                   >
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Variants
+                    Regenerate Variants
                   </Button>
                 </div>
               </CardShell>
 
               <CardShell
                 title="Variants"
-                subtitle="Set details for each variant combination."
+                subtitle="Edit existing variant combinations and stock."
               >
                 {variants.length === 0 ? (
                   <div className="rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
-                    <p className="text-sm font-medium text-black">
-                      No variants yet
-                    </p>
+                    <p className="text-sm font-medium text-black">No variants yet</p>
                     <p className="mt-2 text-sm text-stone-500">
-                      Add attributes above, then generate combinations or add
-                      manual rows.
+                      Add attributes above, then generate combinations or add manual rows.
                     </p>
 
                     <Button
@@ -618,8 +609,7 @@ export default function AdminNewProductPage() {
                 ) : (
                   <div className="space-y-4">
                     <div className="rounded-[1.25rem] bg-stone-50 px-4 py-3 text-sm text-stone-600">
-                      {variants.length} variant
-                      {variants.length > 1 ? "s" : ""} ready to configure
+                      {variants.length} variant{variants.length > 1 ? "s" : ""} loaded for editing
                     </div>
 
                     {variants.map((variant) => (
@@ -719,7 +709,7 @@ export default function AdminNewProductPage() {
 
           <CardShell
             title="Storefront Controls"
-            subtitle="Decide where and how this product appears."
+            subtitle="Control homepage visibility and product ordering."
           >
             <div className="grid gap-5 md:grid-cols-2">
               <SelectField
@@ -751,7 +741,7 @@ export default function AdminNewProductPage() {
               <div>
                 <p className="text-sm font-medium text-black">Featured Product</p>
                 <p className="text-sm text-stone-500">
-                  Show this product higher in homepage and storefront featured sections.
+                  Prioritize this product in homepage and featured storefront sections.
                 </p>
               </div>
             </label>
@@ -759,7 +749,7 @@ export default function AdminNewProductPage() {
 
           <CardShell
             title="Media"
-            subtitle="Add a main image URL for product preview."
+            subtitle="Update the main image URL for product preview."
           >
             <div className="space-y-5">
               <Field
@@ -789,37 +779,6 @@ export default function AdminNewProductPage() {
               {message}
             </div>
           ) : null}
-
-          <div className="sticky bottom-4 z-10 rounded-[1.5rem] border border-black/5 bg-white p-4 shadow-lg">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm font-medium text-black">
-                  Ready to save this product?
-                </p>
-                <p className="text-sm text-stone-500">
-                  Review the preview and publish when ready.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-full px-5"
-                  disabled
-                >
-                  Save Draft
-                </Button>
-                <Button
-                  type="submit"
-                  className="rounded-full bg-black px-5 text-white hover:bg-black/90"
-                  disabled={isPending}
-                >
-                  {isPending ? "Publishing..." : "Publish Product"}
-                </Button>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="space-y-6">
@@ -881,7 +840,7 @@ export default function AdminNewProductPage() {
                       </span>
                     ) : null}
 
-                    <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium capitalize text-stone-700">
+                    <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
                       {form.visibility}
                     </span>
                   </div>
@@ -891,30 +850,47 @@ export default function AdminNewProductPage() {
           </CardShell>
 
           <CardShell
-            title="Setup Summary"
-            subtitle="A quick overview before saving."
+            title="Edit Summary"
+            subtitle="Snapshot of the current product setup."
           >
             <div className="space-y-3">
               <SummaryRow label="Type" value={form.productType} />
               <SummaryRow label="Category" value={form.category || "—"} />
-              <SummaryRow
-                label="Attributes"
-                value={String(normalizedAttributes.length)}
-              />
+              <SummaryRow label="Attributes" value={String(normalizedAttributes.length)} />
               <SummaryRow label="Variants" value={String(variants.length)} />
               <SummaryRow label="Status" value={form.status} />
               <SummaryRow label="Visibility" value={form.visibility} />
-              <SummaryRow
-                label="Featured"
-                value={form.featured ? "Yes" : "No"}
-              />
+              <SummaryRow label="Featured" value={form.featured ? "Yes" : "No"} />
               <SummaryRow label="Sort Order" value={form.sortOrder || "100"} />
+            </div>
+          </CardShell>
+
+          <CardShell
+            title="Last Updated"
+            subtitle="Recent edit metadata preview."
+          >
+            <div className="flex items-center gap-3 rounded-2xl bg-stone-50 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
+                <Clock3 className="h-5 w-5 text-stone-700" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-black">Loaded from database</p>
+                <p className="text-sm text-stone-500">Editing real product data</p>
+              </div>
             </div>
           </CardShell>
         </div>
       </form>
     </section>
   );
+}
+
+function mapStatusToUi(
+  status: "published" | "draft" | "out_of_stock"
+): "Published" | "Draft" | "Out of Stock" {
+  if (status === "published") return "Published";
+  if (status === "draft") return "Draft";
+  return "Out of Stock";
 }
 
 function mapProductStatus(
