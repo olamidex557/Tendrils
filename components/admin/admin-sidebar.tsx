@@ -13,53 +13,18 @@ import {
   BarChart3,
   Settings,
 } from "lucide-react";
+import Logo from "@/components/shared/logo";
 
 const navItems = [
-  {
-    label: "Dashboard",
-    href: "/admin",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "Products",
-    href: "/admin/products",
-    icon: Package,
-  },
-  {
-    label: "Categories",
-    href: "/admin/categories",
-    icon: FolderTree,
-  },
-  {
-    label: "Banners",
-    href: "/admin/banners",
-    icon: ImageIcon,
-  },
-  {
-    label: "Orders",
-    href: "/admin/orders",
-    icon: ShoppingBag,
-  },
-  {
-    label: "Customers",
-    href: "/admin/customers",
-    icon: Users,
-  },
-  {
-    label: "Payments",
-    href: "/admin/payments",
-    icon: CreditCard,
-  },
-  {
-    label: "Analytics",
-    href: "/admin/analytics",
-    icon: BarChart3,
-  },
-  {
-    label: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
-  },
+  { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Products", href: "/admin/products", icon: Package },
+  { label: "Categories", href: "/admin/categories", icon: FolderTree },
+  { label: "Banners", href: "/admin/banners", icon: ImageIcon },
+  { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
+  { label: "Customers", href: "/admin/customers", icon: Users },
+  { label: "Payments", href: "/admin/payments", icon: CreditCard },
+  { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+  { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 export default function AdminSidebar() {
@@ -67,21 +32,27 @@ export default function AdminSidebar() {
 
   return (
     <aside className="h-fit rounded-[1.75rem] border border-black/5 bg-white p-4 shadow-sm">
-      <div className="border-b border-stone-200 px-3 pb-5 pt-2">
+      {/* BRAND */}
+      <div className="border-b border-stone-200 px-3 pb-5 pt-3">
         <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
           Admin Panel
         </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-black">
-          Ajike+
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-stone-500">
-          Manage storefront content, products, payments, and commerce data.
+
+        {/* LOGO */}
+        <div className="mt-4 flex justify-center">
+          <Logo size="xl" className="scale-220" />
+        </div>
+
+        <p className="mt-4 text-sm leading-6 text-stone-500 text-center">
+          Manage Tendrils storefront, products, payments, and growth.
         </p>
       </div>
 
+      {/* NAV */}
       <nav className="mt-4 space-y-2">
         {navItems.map((item) => {
           const Icon = item.icon;
+
           const isActive =
             pathname === item.href ||
             (item.href !== "/admin" && pathname.startsWith(item.href));

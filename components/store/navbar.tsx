@@ -61,9 +61,9 @@ export default function Navbar() {
             </Sheet>
           </div>
 
-          <div className="shrink-0">
+          <div className="shrink-0 flex items-center">
             <Link href="/">
-              <Logo />
+              <Logo size="xl" className="scale-150 md:scale-175 lg:scale-200" />
             </Link>
           </div>
 
@@ -72,7 +72,7 @@ export default function Navbar() {
               <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
               <Input
                 type="search"
-                placeholder="Search products in Ajike+"
+                placeholder="Search products in Tendrils"
                 className="h-11 rounded-full border-black/10 bg-stone-50 pl-10 pr-4 shadow-none focus-visible:ring-1 focus-visible:ring-black/20"
               />
             </div>

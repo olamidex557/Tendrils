@@ -15,7 +15,15 @@ import {
   Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import Logo from "@/components/shared/logo";
 
 const navItems = [
   {
@@ -77,16 +85,27 @@ export default function AdminMobileNav() {
       </SheetTrigger>
 
       <SheetContent side="left" className="w-[300px] p-0">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Admin navigation menu</SheetTitle>
+          <SheetDescription>
+            Open the Tendrils admin navigation drawer to move between dashboard,
+            products, categories, banners, orders, customers, payments,
+            analytics, and settings.
+          </SheetDescription>
+        </SheetHeader>
+
         <div className="h-full bg-white">
           <div className="border-b border-stone-200 px-6 py-6">
             <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
               Admin Panel
             </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-black">
-              Ajike+
-            </h2>
-            <p className="mt-2 text-sm text-stone-500">
-              Store operations and content control.
+
+            <div className="mt-4 flex justify-center">
+              <Logo size="xl" className="scale-200" />
+            </div>
+
+            <p className="mt-4 text-center text-sm text-stone-500">
+              Tendrils admin control center
             </p>
           </div>
 

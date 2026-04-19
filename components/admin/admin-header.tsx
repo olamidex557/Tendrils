@@ -10,16 +10,12 @@ backdrop-blur md:px-6">
 
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-stone-500">
-              Ajike+ Admin
+              Tendrils Admin
             </p>
             <h1 className="text-lg font-semibold tracking-tight text-black md:text-xl">
               Store Control Center
             </h1>
           </div>
-        </div>
-
-        <div className="hidden rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-600 md:block">
-          Live Supabase Data
         </div>
       </div>
     </header>
