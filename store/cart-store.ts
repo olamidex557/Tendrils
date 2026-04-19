@@ -5,24 +5,30 @@ import { persist } from "zustand/middleware";
 
 export type CartItem = {
   id: string;
+  productId?: string;
+  variantId?: string | null;
   slug: string;
   name: string;
   price: number;
-  image: string;
   quantity: number;
+  stockQuantity?: number | null;
+  image?: string;
   category?: string;
 };
 
 type CartStore = {
   items: CartItem[];
-  addItem: (item: Omit<CartItem, "quantity">) => void;
-  removeItem: (id: string) => void;
-  increaseQuantity: (id: string) => void;
-  decreaseQuantity: (id: string) => void;
+  addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
+  removeItem: (id: string, variantId?: string | null) => void;
+  updateQuantity: (id: string, quantity: number, variantId?: string | null) => void;
   clearCart: () => void;
-  getSubtotal: () => number;
   getItemCount: () => number;
+  getSubtotal: () => number;
 };
+
+function isSameCartLine(item: CartItem, id: string, variantId?: string | null) {
+  return item.id === id && (item.variantId ?? null) === (variantId ?? null);
+}
 
 export const useCartStore = create<CartStore>()(
   persist(
@@ -31,53 +37,82 @@ export const useCartStore = create<CartStore>()(
 
       addItem: (item) =>
         set((state) => {
-          const existing = state.items.find((cartItem) => cartItem.id === item.id);
+          const requestedQty = item.quantity ?? 1;
+          const maxQty =
+            typeof item.stockQuantity === "number" && item.stockQuantity >= 0
+              ? item.stockQuantity
+              : 9999;
 
-          if (existing) {
-            return {
-              items: state.items.map((cartItem) =>
-                cartItem.id === item.id
-                  ? { ...cartItem, quantity: cartItem.quantity + 1 }
-                  : cartItem
-              ),
+          const existingIndex = state.items.findIndex((cartItem) =>
+            isSameCartLine(cartItem, item.id, item.variantId ?? null)
+          );
+
+          if (existingIndex !== -1) {
+            const updatedItems = [...state.items];
+            const current = updatedItems[existingIndex];
+            const nextQty = Math.min(current.quantity + requestedQty, maxQty);
+
+            updatedItems[existingIndex] = {
+              ...current,
+              stockQuantity: item.stockQuantity ?? current.stockQuantity,
+              quantity: nextQty,
             };
+
+            return { items: updatedItems };
           }
 
           return {
-            items: [...state.items, { ...item, quantity: 1 }],
+            items: [
+              ...state.items,
+              {
+                ...item,
+                quantity: Math.min(requestedQty, maxQty),
+              },
+            ],
           };
         }),
 
-      removeItem: (id) =>
+      removeItem: (id, variantId) =>
         set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
-        })),
-
-      increaseQuantity: (id) =>
-        set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+          items: state.items.filter(
+            (item) => !isSameCartLine(item, id, variantId ?? null)
           ),
         })),
 
-      decreaseQuantity: (id) =>
+      updateQuantity: (id, quantity, variantId) =>
         set((state) => ({
-          items: state.items
-            .map((item) =>
-              item.id === id
-                ? { ...item, quantity: Math.max(1, item.quantity - 1) }
-                : item
-            )
-            .filter((item) => item.quantity > 0),
+          items:
+            quantity <= 0
+              ? state.items.filter(
+                  (item) => !isSameCartLine(item, id, variantId ?? null)
+                )
+              : state.items.map((item) => {
+                  if (!isSameCartLine(item, id, variantId ?? null)) {
+                    return item;
+                  }
+
+                  const maxQty =
+                    typeof item.stockQuantity === "number" && item.stockQuantity >= 0
+                      ? item.stockQuantity
+                      : 9999;
+
+                  return {
+                    ...item,
+                    quantity: Math.min(quantity, maxQty),
+                  };
+                }),
         })),
 
       clearCart: () => set({ items: [] }),
 
-      getSubtotal: () =>
-        get().items.reduce((total, item) => total + item.price * item.quantity, 0),
-
       getItemCount: () =>
-        get().items.reduce((count, item) => count + item.quantity, 0),
+        get().items.reduce((sum, item) => sum + item.quantity, 0),
+
+      getSubtotal: () =>
+        get().items.reduce(
+          (sum, item) => sum + Number(item.price) * Number(item.quantity),
+          0
+        ),
     }),
     {
       name: "ajike-cart",

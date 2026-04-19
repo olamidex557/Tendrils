@@ -38,8 +38,8 @@ export default function VerifyPaymentPage() {
         );
 
         if (response.ok) {
-          clearCart();
           if (!cancelled) {
+            clearCart();
             router.replace(
               `/success?reference=${encodeURIComponent(currentReference)}`
             );
@@ -156,7 +156,7 @@ export default function VerifyPaymentPage() {
             <InfoCard
               icon={<Sparkles className="h-5 w-5 text-black" />}
               title="Almost done"
-              description="Once confirmed, you will be taken automatically to your success page."
+              description="Once confirmed, your cart is cleared and you will be taken automatically to your success page."
             />
           </motion.aside>
         </div>

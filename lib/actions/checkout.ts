@@ -10,6 +10,8 @@ type CheckoutInput = {
   address: string;
   items: {
     id: string;
+    productId?: string | null;
+    variantId?: string | null;
     name: string;
     slug: string;
     price: number;
@@ -21,7 +23,9 @@ function generateOrderNumber() {
   return `AJK-${Date.now()}`;
 }
 
-function isUuid(value: string) {
+function isUuid(value: string | null | undefined) {
+  if (!value) return false;
+
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
   );
@@ -56,6 +60,50 @@ export async function createCheckoutSession(input: CheckoutInput) {
 
   if (!process.env.NEXT_PUBLIC_SITE_URL) {
     throw new Error("NEXT_PUBLIC_SITE_URL is missing.");
+  }
+
+  for (const item of input.items) {
+    if (item.variantId && isUuid(item.variantId)) {
+      const { data: variant, error } = await supabaseAdmin
+        .from("product_variants")
+        .select("stock_quantity")
+        .eq("id", item.variantId)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const stock = Number(variant?.stock_quantity ?? 0);
+
+      if (item.quantity > stock) {
+        throw new Error(`${item.name} no longer has enough stock available.`);
+      }
+    } else {
+      const productId = isUuid(item.productId)
+        ? item.productId
+        : isUuid(item.id)
+        ? item.id
+        : null;
+
+      if (productId) {
+        const { data: product, error } = await supabaseAdmin
+          .from("products")
+          .select("stock_quantity")
+          .eq("id", productId)
+          .maybeSingle();
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        const stock = Number(product?.stock_quantity ?? 0);
+
+        if (item.quantity > stock) {
+          throw new Error(`${item.name} no longer has enough stock available.`);
+        }
+      }
+    }
   }
 
   const orderNumber = generateOrderNumber();
@@ -132,7 +180,12 @@ export async function createCheckoutSession(input: CheckoutInput) {
   const { error: itemsError } = await supabaseAdmin.from("order_items").insert(
     input.items.map((item) => ({
       order_id: order.id,
-      product_id: isUuid(item.id) ? item.id : null,
+      product_id: isUuid(item.productId)
+        ? item.productId
+        : isUuid(item.id)
+        ? item.id
+        : null,
+      variant_id: isUuid(item.variantId) ? item.variantId : null,
       product_name: item.name,
       product_slug: item.slug,
       unit_price: Number(item.price),
@@ -157,7 +210,9 @@ export async function createCheckoutSession(input: CheckoutInput) {
         email: input.email.trim(),
         amount: Math.round(totalAmount * 100),
         reference: orderNumber,
-        callback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/verify-payment?reference=${encodeURIComponent(orderNumber)}`,
+        callback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/verify-payment?reference=${encodeURIComponent(
+          orderNumber
+        )}`,
         metadata: {
           order_number: orderNumber,
           customer_email: input.email.trim(),
@@ -167,9 +222,6 @@ export async function createCheckoutSession(input: CheckoutInput) {
   );
 
   const paystackData = await paystackResponse.json();
-
-  console.log("Paystack initialize status:", paystackResponse.status);
-  console.log("Paystack initialize response:", paystackData);
 
   if (!paystackResponse.ok || !paystackData.status) {
     throw new Error(paystackData?.message || "Failed to initialize payment.");

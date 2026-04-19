@@ -119,7 +119,9 @@ export async function POST(req: Request) {
       );
     }
 
-    if (order.payment_status !== "paid") {
+    const orderWasAlreadyPaid = order.payment_status === "paid";
+
+    if (!orderWasAlreadyPaid) {
       const { error: orderUpdateError } = await supabaseAdmin
         .from("orders")
         .update({
@@ -154,6 +156,144 @@ export async function POST(req: Request) {
             updated_at: new Date().toISOString(),
           })
           .eq("id", order.customer_id);
+      }
+
+      const { data: orderItems, error: orderItemsError } = await supabaseAdmin
+        .from("order_items")
+        .select("id, product_id, variant_id, quantity")
+        .eq("order_id", order.id);
+
+      if (orderItemsError) {
+        return NextResponse.json(
+          { error: orderItemsError.message },
+          { status: 500 }
+        );
+      }
+
+      for (const item of orderItems ?? []) {
+        const quantity = safeNumber(item.quantity, 0);
+
+        if (item.variant_id) {
+          const { data: variant, error: variantLookupError } = await supabaseAdmin
+            .from("product_variants")
+            .select("id, product_id, stock_quantity, status")
+            .eq("id", item.variant_id)
+            .maybeSingle();
+
+          if (variantLookupError) {
+            return NextResponse.json(
+              { error: variantLookupError.message },
+              { status: 500 }
+            );
+          }
+
+          if (variant) {
+            const nextVariantStock = Math.max(
+              0,
+              safeNumber(variant.stock_quantity, 0) - quantity
+            );
+
+            const nextVariantStatus =
+              nextVariantStock <= 0 ? "inactive" : variant.status ?? "active";
+
+            const { error: variantUpdateError } = await supabaseAdmin
+              .from("product_variants")
+              .update({
+                stock_quantity: nextVariantStock,
+                status: nextVariantStatus,
+              })
+              .eq("id", variant.id);
+
+            if (variantUpdateError) {
+              return NextResponse.json(
+                { error: variantUpdateError.message },
+                { status: 500 }
+              );
+            }
+
+            if (variant.product_id) {
+              const { data: siblingVariants, error: siblingError } =
+                await supabaseAdmin
+                  .from("product_variants")
+                  .select("stock_quantity")
+                  .eq("product_id", variant.product_id);
+
+              if (siblingError) {
+                return NextResponse.json(
+                  { error: siblingError.message },
+                  { status: 500 }
+                );
+              }
+
+              const totalVariantStock = (siblingVariants ?? []).reduce(
+                (sum, row) => sum + safeNumber(row.stock_quantity, 0),
+                0
+              );
+
+              const productStatus =
+                totalVariantStock <= 0 ? "out_of_stock" : "published";
+
+              const { error: productSyncError } = await supabaseAdmin
+                .from("products")
+                .update({
+                  stock_quantity: totalVariantStock,
+                  status: productStatus,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", variant.product_id);
+
+              if (productSyncError) {
+                return NextResponse.json(
+                  { error: productSyncError.message },
+                  { status: 500 }
+                );
+              }
+            }
+
+            continue;
+          }
+        }
+
+        if (item.product_id) {
+          const { data: product, error: productLookupError } = await supabaseAdmin
+            .from("products")
+            .select("id, stock_quantity, status")
+            .eq("id", item.product_id)
+            .maybeSingle();
+
+          if (productLookupError) {
+            return NextResponse.json(
+              { error: productLookupError.message },
+              { status: 500 }
+            );
+          }
+
+          if (!product) continue;
+
+          const nextStock = Math.max(
+            0,
+            safeNumber(product.stock_quantity, 0) - quantity
+          );
+
+          const nextStatus =
+            nextStock <= 0 ? "out_of_stock" : product.status ?? "published";
+
+          const { error: productUpdateError } = await supabaseAdmin
+            .from("products")
+            .update({
+              stock_quantity: nextStock,
+              status: nextStatus,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", product.id);
+
+          if (productUpdateError) {
+            return NextResponse.json(
+              { error: productUpdateError.message },
+              { status: 500 }
+            );
+          }
+        }
       }
     }
 

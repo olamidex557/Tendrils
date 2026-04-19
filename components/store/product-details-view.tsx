@@ -45,10 +45,17 @@ export default function ProductDetailsView({
   product,
 }: ProductDetailsViewProps) {
   const addItem = useCartStore((state) => state.addItem);
+  const cartItems = useCartStore((state) => state.items);
   const toggleWishlist = useWishlistStore((state) => state.toggleItem);
-  const isInWishlist = useWishlistStore((state) => state.isInWishlist(product.id));
+  const isInWishlist = useWishlistStore((state) =>
+    state.isInWishlist(product.id)
+  );
 
-  const defaultVariant = product.variants[0] ?? null;
+  const defaultVariant =
+    product.variants.find((variant) => Number(variant.stockQuantity) > 0) ??
+    product.variants[0] ??
+    null;
+
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     defaultVariant?.id ?? null
   );
@@ -67,10 +74,41 @@ export default function ProductDetailsView({
 
   const effectiveStock =
     product.productType === "variable"
-      ? selectedVariant?.stockQuantity ?? 0
-      : product.stockQuantity;
+      ? Number(selectedVariant?.stockQuantity ?? 0)
+      : Number(product.stockQuantity ?? 0);
 
-  const canBuy = effectiveStock > 0;
+  const cartLine = useMemo(() => {
+    const lineId =
+      product.productType === "variable"
+        ? selectedVariant?.id ?? product.id
+        : product.id;
+
+    const lineVariantId =
+      product.productType === "variable"
+        ? selectedVariant?.id ?? null
+        : null;
+
+    return (
+      cartItems.find(
+        (item) =>
+          item.id === lineId &&
+          (item.variantId ?? null) === (lineVariantId ?? null)
+      ) ?? null
+    );
+  }, [cartItems, product.id, product.productType, selectedVariant?.id]);
+
+  const quantityInCart = cartLine?.quantity ?? 0;
+  const remainingStock = Math.max(0, effectiveStock - quantityInCart);
+  const canBuy = effectiveStock > 0 && remainingStock > 0;
+
+  const stockMessage =
+    effectiveStock <= 0
+      ? "Out of stock"
+      : remainingStock <= 0
+      ? "Maximum available quantity already in cart"
+      : remainingStock <= 3
+      ? `Only ${remainingStock} left`
+      : "In stock";
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 md:px-6">
@@ -140,12 +178,14 @@ export default function ProductDetailsView({
           <div>
             <span
               className={`rounded-full px-3 py-1 text-xs font-medium ${
-                canBuy
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
+                effectiveStock <= 0
+                  ? "bg-red-100 text-red-700"
+                  : remainingStock <= 3
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-green-100 text-green-700"
               }`}
             >
-              {canBuy ? "In Stock" : "Out of Stock"}
+              {stockMessage}
             </span>
           </div>
 
@@ -178,19 +218,28 @@ export default function ProductDetailsView({
                   <div className="flex flex-wrap gap-2">
                     {product.variants.map((variant) => {
                       const active = selectedVariantId === variant.id;
+                      const soldOut = Number(variant.stockQuantity ?? 0) <= 0;
 
                       return (
                         <button
                           key={variant.id}
                           type="button"
-                          onClick={() => setSelectedVariantId(variant.id)}
+                          onClick={() => {
+                            if (!soldOut) setSelectedVariantId(variant.id);
+                          }}
+                          disabled={soldOut}
                           className={`rounded-full px-4 py-2 text-sm transition ${
-                            active
+                            soldOut
+                              ? "cursor-not-allowed bg-stone-100 text-stone-400 line-through"
+                              : active
                               ? "bg-black text-white"
                               : "bg-stone-100 text-stone-700 hover:bg-stone-200 hover:text-black"
                           }`}
                         >
                           {variant.label}
+                          {!soldOut && Number(variant.stockQuantity) <= 3
+                            ? ` (${variant.stockQuantity} left)`
+                            : ""}
                         </button>
                       );
                     })}
@@ -215,13 +264,22 @@ export default function ProductDetailsView({
               disabled={!canBuy}
               onClick={() =>
                 addItem({
-                  id: product.id,
+                  id:
+                    product.productType === "variable"
+                      ? selectedVariant?.id ?? product.id
+                      : product.id,
+                  productId: product.id,
+                  variantId:
+                    product.productType === "variable"
+                      ? selectedVariant?.id ?? null
+                      : null,
                   slug: product.slug,
                   name:
                     product.productType === "variable" && selectedVariant
                       ? `${product.name} - ${selectedVariant.label}`
                       : product.name,
                   price: Number(effectivePrice),
+                  stockQuantity: Number(effectiveStock),
                   image: product.imageUrl ?? "",
                   category: product.categoryName ?? undefined,
                 })
@@ -248,10 +306,18 @@ export default function ProductDetailsView({
               }
               className="rounded-full px-6"
             >
-              <Heart className={`mr-2 h-4 w-4 ${isInWishlist ? "fill-current" : ""}`} />
+              <Heart
+                className={`mr-2 h-4 w-4 ${isInWishlist ? "fill-current" : ""}`}
+              />
               {isInWishlist ? "Saved" : "Save"}
             </Button>
           </div>
+
+          {quantityInCart > 0 ? (
+            <p className="text-sm text-stone-500">
+              {quantityInCart} already in cart
+            </p>
+          ) : null}
         </div>
       </div>
     </section>

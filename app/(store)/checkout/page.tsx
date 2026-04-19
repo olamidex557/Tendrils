@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CreditCard, Lock, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,12 +8,10 @@ import { useCartStore } from "@/store/cart-store";
 import { createCheckoutSession } from "@/lib/actions/checkout";
 
 export default function CheckoutPage() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
 
   const cartItems = useCartStore((state) => state.items);
-  const clearCart = useCartStore((state) => state.clearCart);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -30,7 +27,7 @@ export default function CheckoutPage() {
     );
   }, [cartItems]);
 
-  const shippingFee = 0;
+  const shippingFee: number = 0;
   const total = subtotal + shippingFee;
 
   function handleChange(
@@ -58,6 +55,8 @@ export default function CheckoutPage() {
           address: form.address.trim(),
           items: cartItems.map((item) => ({
             id: item.id,
+            productId: item.productId ?? item.id,
+            variantId: item.variantId ?? null,
             name: item.name,
             slug: item.slug,
             price: Number(item.price),
@@ -89,7 +88,10 @@ export default function CheckoutPage() {
             Add some products before proceeding to checkout.
           </p>
 
-          <Button asChild className="mt-6 rounded-full bg-black px-6 text-white hover:bg-black/90">
+          <Button
+            asChild
+            className="mt-6 rounded-full bg-black px-6 text-white hover:bg-black/90"
+          >
             <Link href="/products">Continue Shopping</Link>
           </Button>
         </div>
@@ -100,7 +102,10 @@ export default function CheckoutPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
       <div className="mb-8 flex items-center gap-2 text-sm text-stone-500">
-        <Link href="/cart" className="inline-flex items-center gap-2 transition hover:text-black">
+        <Link
+          href="/cart"
+          className="inline-flex items-center gap-2 transition hover:text-black"
+        >
           <ArrowLeft className="h-4 w-4" />
           Back to Cart
         </Link>
@@ -179,8 +184,7 @@ export default function CheckoutPage() {
                   placeholder="Enter full delivery address"
                   rows={5}
                   required
-                  className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none 
-transition focus:border-black/30"
+                  className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-black/30"
                 />
               </div>
             </div>
@@ -212,7 +216,7 @@ transition focus:border-black/30"
             <div className="space-y-4">
               {cartItems.map((item) => (
                 <div
-                  key={item.id}
+                  key={`${item.id}-${item.variantId ?? "simple"}`}
                   className="flex items-center justify-between gap-4 rounded-2xl bg-stone-50 px-4 py-4"
                 >
                   <div className="min-w-0">
@@ -225,7 +229,10 @@ transition focus:border-black/30"
                   </div>
 
                   <p className="text-sm font-semibold text-black">
-                    ₦{(Number(item.price) * Number(item.quantity)).toLocaleString()}
+                    ₦
+                    {(
+                      Number(item.price) * Number(item.quantity)
+                    ).toLocaleString()}
                   </p>
                 </div>
               ))}
@@ -298,8 +305,7 @@ function Field({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition 
-focus:border-black/30"
+        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
       />
     </div>
   );
@@ -316,10 +322,14 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <span className={`text-sm ${bold ? "font-semibold text-black" : "text-stone-600"}`}>
+      <span
+        className={`text-sm ${bold ? "font-semibold text-black" : "text-stone-600"}`}
+      >
         {label}
       </span>
-      <span className={`text-sm ${bold ? "font-semibold text-black" : "text-stone-700"}`}>
+      <span
+        className={`text-sm ${bold ? "font-semibold text-black" : "text-stone-700"}`}
+      >
         {value}
       </span>
     </div>
