@@ -25,6 +25,8 @@ export type AdminEditBannerRecord = {
   imageUrl: string | null;
   priority: number;
   scheduleText: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
 };
 
 function isUuid(value: string) {
@@ -88,7 +90,9 @@ export const getAdminBannerById = cache(
       status,
       image_url,
       priority,
-      schedule_text
+      schedule_text,
+      starts_at,
+      ends_at
     `);
 
     const { data, error } = isUuid(identifier)
@@ -112,6 +116,8 @@ export const getAdminBannerById = cache(
       imageUrl: data.image_url ?? null,
       priority: data.priority ?? 1,
       scheduleText: data.schedule_text ?? null,
+      startsAt: data.starts_at ?? null,
+      endsAt: data.ends_at ?? null,
     };
   }
 );

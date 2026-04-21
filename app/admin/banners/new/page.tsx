@@ -13,6 +13,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { createBanner } from "@/lib/actions/banners";
 
+const placementOptions = [
+  { label: "Homepage Hero", value: "homepage_hero" },
+  { label: "Homepage Secondary", value: "homepage_secondary" },
+  { label: "Promo Strip", value: "promo_strip" },
+  { label: "Category Banner", value: "category_banner" },
+];
+
+const statusOptions = [
+  { label: "Active", value: "Active" },
+  { label: "Draft", value: "Draft" },
+  { label: "Scheduled", value: "Scheduled" },
+];
+
+function getPlacementLabel(value: string) {
+  return (
+    placementOptions.find((option) => option.value === value)?.label ?? value
+  );
+}
+
 export default function AdminNewBannerPage() {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
@@ -22,11 +41,13 @@ export default function AdminNewBannerPage() {
     subtitle: "",
     ctaText: "",
     ctaLink: "",
-    placement: "Homepage Hero",
-    status: "Draft",
+    placement: "homepage_hero",
+    status: "Active",
     imageUrl: "",
     priority: "1",
     schedule: "",
+    startsAt: "",
+    endsAt: "",
   });
 
   function handleChange(
@@ -34,6 +55,18 @@ export default function AdminNewBannerPage() {
   ) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function getSubmitLabel() {
+    if (isPending) {
+      if (form.status === "Draft") return "Saving Draft...";
+      if (form.status === "Scheduled") return "Scheduling...";
+      return "Publishing...";
+    }
+
+    if (form.status === "Draft") return "Save Draft";
+    if (form.status === "Scheduled") return "Schedule Banner";
+    return "Publish Banner";
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -52,20 +85,30 @@ export default function AdminNewBannerPage() {
           image_url: form.imageUrl.trim() || undefined,
           priority: form.priority ? Number(form.priority) : 1,
           schedule_text: form.schedule.trim() || undefined,
+          starts_at: toIsoFromDatetimeLocal(form.startsAt),
+          ends_at: toIsoFromDatetimeLocal(form.endsAt),
         });
 
-        setMessage("Banner created successfully.");
+        setMessage(
+          form.status === "Active"
+            ? "Banner published successfully."
+            : form.status === "Scheduled"
+            ? "Banner scheduled successfully."
+            : "Banner draft saved successfully."
+        );
 
         setForm({
           title: "",
           subtitle: "",
           ctaText: "",
           ctaLink: "",
-          placement: "Homepage Hero",
-          status: "Draft",
+          placement: "homepage_hero",
+          status: "Active",
           imageUrl: "",
           priority: "1",
           schedule: "",
+          startsAt: "",
+          endsAt: "",
         });
       } catch (error) {
         const errorMessage =
@@ -98,22 +141,13 @@ export default function AdminNewBannerPage() {
 
           <div className="flex flex-wrap gap-3">
             <Button
-              type="button"
-              variant="outline"
-              className="rounded-full px-5"
-              disabled
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Save Draft
-            </Button>
-
-            <Button
               type="submit"
               form="new-banner-form"
               className="rounded-full bg-black px-5 text-white hover:bg-black/90"
               disabled={isPending}
             >
-              {isPending ? "Publishing..." : "Publish Banner"}
+              <Save className="mr-2 h-4 w-4" />
+              {getSubmitLabel()}
             </Button>
           </div>
         </div>
@@ -171,19 +205,14 @@ export default function AdminNewBannerPage() {
                   name="placement"
                   value={form.placement}
                   onChange={handleChange}
-                  options={[
-                    "Homepage Hero",
-                    "Homepage Secondary",
-                    "Promo Strip",
-                    "Category Banner",
-                  ]}
+                  options={placementOptions}
                 />
                 <SelectField
                   label="Status"
                   name="status"
                   value={form.status}
                   onChange={handleChange}
-                  options={["Draft", "Active", "Scheduled"]}
+                  options={statusOptions}
                 />
               </div>
 
@@ -197,11 +226,28 @@ export default function AdminNewBannerPage() {
                   type="number"
                 />
                 <Field
-                  label="Schedule"
+                  label="Schedule Label"
                   name="schedule"
                   value={form.schedule}
                   onChange={handleChange}
                   placeholder="e.g. Apr 20, 2026"
+                />
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field
+                  label="Start Date & Time"
+                  name="startsAt"
+                  value={form.startsAt}
+                  onChange={handleChange}
+                  type="datetime-local"
+                />
+                <Field
+                  label="End Date & Time"
+                  name="endsAt"
+                  value={form.endsAt}
+                  onChange={handleChange}
+                  type="datetime-local"
                 />
               </div>
             </div>
@@ -269,7 +315,7 @@ export default function AdminNewBannerPage() {
 
               <div className="space-y-3 p-5">
                 <p className="text-xs uppercase tracking-wide text-stone-500">
-                  {form.placement}
+                  {getPlacementLabel(form.placement)}
                 </p>
 
                 <h4 className="text-xl font-semibold text-black">
@@ -303,6 +349,15 @@ export default function AdminNewBannerPage() {
       </form>
     </section>
   );
+}
+
+function toIsoFromDatetimeLocal(value: string) {
+  if (!value) return undefined;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+
+  return date.toISOString();
 }
 
 function CardShell({
@@ -384,9 +439,9 @@ function SelectField({
   name: string;
   value: string;
   onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLSelectElement>
   ) => void;
-  options: string[];
+  options: { label: string; value: string }[];
 }) {
   return (
     <div>
@@ -401,8 +456,8 @@ function SelectField({
         className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
       >
         {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>

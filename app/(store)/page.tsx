@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import BrandStrip from "@/components/store/brand-strip";
 import HomepageHero from "@/components/store/homepage-hero";
 import HomepageCategories from "@/components/store/homepage-categories";
@@ -15,14 +17,13 @@ export default async function HomePage() {
     getFeaturedProducts(),
   ]);
 
-  const heroBanner =
-    banners.find((banner) =>
-      banner.placement.toLowerCase().includes("hero")
-    ) ?? banners[0] ?? null;
+  const heroBanners = banners
+    .filter((banner) => banner.placement === "homepage_hero")
+    .slice(0, 3);
 
   return (
     <main>
-      <HomepageHero banner={heroBanner} />
+      <HomepageHero banners={heroBanners} />
       <HomepageCategories categories={categories} />
       <HomepageProducts products={products} />
       <BrandStrip />

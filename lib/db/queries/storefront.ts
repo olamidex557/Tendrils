@@ -42,6 +42,8 @@ export type StorefrontBanner = {
   imageUrl: string | null;
   priority: number;
   scheduleText: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
 };
 
 function fallbackCategoryImage(slug: string) {
@@ -166,6 +168,8 @@ function normalizeBanner(row: any): StorefrontBanner {
     imageUrl: row.image_url ?? fallbackBannerImage(row.placement),
     priority: row.priority ?? 1,
     scheduleText: row.schedule_text ?? null,
+    startsAt: row.starts_at ?? null,
+    endsAt: row.ends_at ?? null,
   };
 }
 
@@ -440,9 +444,12 @@ export const getActiveBanners = cache(async (): Promise<StorefrontBanner[]> => {
       status,
       image_url,
       priority,
-      schedule_text
+      schedule_text,
+      starts_at,
+      ends_at,
+      created_at
     `)
-    .eq("status", "active")
+    .in("status", ["active", "scheduled"])
     .order("priority", { ascending: true })
     .order("created_at", { ascending: false });
 
@@ -450,5 +457,19 @@ export const getActiveBanners = cache(async (): Promise<StorefrontBanner[]> => {
     throw new Error(`Failed to load banners: ${error.message}`);
   }
 
-  return (data ?? []).map(normalizeBanner);
+  const now = new Date();
+
+  return (data ?? [])
+    .map(normalizeBanner)
+    .filter((banner) => {
+      const startsOk =
+        !banner.startsAt ||
+        new Date(banner.startsAt).getTime() <= now.getTime();
+
+      const endsOk =
+        !banner.endsAt ||
+        new Date(banner.endsAt).getTime() >= now.getTime();
+
+      return startsOk && endsOk;
+    });
 });

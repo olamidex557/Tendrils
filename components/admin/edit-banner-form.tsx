@@ -16,8 +16,30 @@ import { updateBanner } from "@/lib/actions/banners";
 import type { AdminEditBannerRecord } from "@/lib/db/queries/admin-content";
 
 type Props = {
-  banner: AdminEditBannerRecord;
+  banner: AdminEditBannerRecord & {
+    startsAt?: string | null;
+    endsAt?: string | null;
+  };
 };
+
+const placementOptions = [
+  { label: "Homepage Hero", value: "homepage_hero" },
+  { label: "Homepage Secondary", value: "homepage_secondary" },
+  { label: "Promo Strip", value: "promo_strip" },
+  { label: "Category Banner", value: "category_banner" },
+];
+
+const statusOptions = [
+  { label: "Active", value: "Active" },
+  { label: "Draft", value: "Draft" },
+  { label: "Scheduled", value: "Scheduled" },
+];
+
+function getPlacementLabel(value: string) {
+  return (
+    placementOptions.find((option) => option.value === value)?.label ?? value
+  );
+}
 
 export default function EditBannerForm({ banner }: Props) {
   const [isPending, startTransition] = useTransition();
@@ -28,11 +50,13 @@ export default function EditBannerForm({ banner }: Props) {
     subtitle: banner.subtitle ?? "",
     ctaText: banner.ctaText ?? "",
     ctaLink: banner.ctaLink ?? "",
-    placement: banner.placement,
+    placement: normalizeBannerPlacement(banner.placement),
     status: mapBannerStatusToUi(banner.status),
     imageUrl: banner.imageUrl ?? "",
     priority: String(banner.priority ?? 1),
     schedule: banner.scheduleText ?? "",
+    startsAt: toDatetimeLocalValue(banner.startsAt ?? null),
+    endsAt: toDatetimeLocalValue(banner.endsAt ?? null),
   });
 
   function handleChange(
@@ -40,6 +64,18 @@ export default function EditBannerForm({ banner }: Props) {
   ) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function getSubmitLabel() {
+    if (isPending) {
+      if (form.status === "Draft") return "Saving Draft...";
+      if (form.status === "Scheduled") return "Scheduling...";
+      return "Updating...";
+    }
+
+    if (form.status === "Draft") return "Update Draft";
+    if (form.status === "Scheduled") return "Update Scheduled Banner";
+    return "Update Active Banner";
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -58,6 +94,8 @@ export default function EditBannerForm({ banner }: Props) {
           image_url: form.imageUrl.trim() || undefined,
           priority: form.priority ? Number(form.priority) : 1,
           schedule_text: form.schedule.trim() || undefined,
+          starts_at: form.startsAt || undefined,
+          ends_at: form.endsAt || undefined,
         });
 
         setMessage("Banner updated successfully.");
@@ -86,7 +124,7 @@ export default function EditBannerForm({ banner }: Props) {
               Edit Banner
             </h2>
             <p className="mt-2 text-sm text-stone-600">
-              Update banner content, placement, status, and priority.
+              Update banner content, placement, status, priority, and timing.
             </p>
           </div>
 
@@ -97,7 +135,7 @@ export default function EditBannerForm({ banner }: Props) {
             disabled={isPending}
           >
             <Save className="mr-2 h-4 w-4" />
-            {isPending ? "Updating..." : "Update Banner"}
+            {getSubmitLabel()}
           </Button>
         </div>
       </div>
@@ -154,19 +192,14 @@ export default function EditBannerForm({ banner }: Props) {
                   name="placement"
                   value={form.placement}
                   onChange={handleChange}
-                  options={[
-                    "Homepage Hero",
-                    "Homepage Secondary",
-                    "Promo Strip",
-                    "Category Banner",
-                  ]}
+                  options={placementOptions}
                 />
                 <SelectField
                   label="Status"
                   name="status"
                   value={form.status}
                   onChange={handleChange}
-                  options={["Draft", "Active", "Scheduled"]}
+                  options={statusOptions}
                 />
               </div>
 
@@ -180,11 +213,28 @@ export default function EditBannerForm({ banner }: Props) {
                   type="number"
                 />
                 <Field
-                  label="Schedule"
+                  label="Schedule Label"
                   name="schedule"
                   value={form.schedule}
                   onChange={handleChange}
                   placeholder="e.g. Apr 20, 2026"
+                />
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field
+                  label="Start Date & Time"
+                  name="startsAt"
+                  value={form.startsAt}
+                  onChange={handleChange}
+                  type="datetime-local"
+                />
+                <Field
+                  label="End Date & Time"
+                  name="endsAt"
+                  value={form.endsAt}
+                  onChange={handleChange}
+                  type="datetime-local"
                 />
               </div>
             </div>
@@ -252,7 +302,7 @@ export default function EditBannerForm({ banner }: Props) {
 
               <div className="space-y-3 p-5">
                 <p className="text-xs uppercase tracking-wide text-stone-500">
-                  {form.placement}
+                  {getPlacementLabel(form.placement)}
                 </p>
                 <h4 className="text-xl font-semibold text-black">
                   {form.title || "Banner Title"}
@@ -293,10 +343,32 @@ export default function EditBannerForm({ banner }: Props) {
   );
 }
 
+function normalizeBannerPlacement(value: string) {
+  if (!value) return "homepage_hero";
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "homepage hero") return "homepage_hero";
+  if (normalized === "homepage secondary") return "homepage_secondary";
+  if (normalized === "promo strip") return "promo_strip";
+  if (normalized === "category banner") return "category_banner";
+
+  return normalized;
+}
+
 function mapBannerStatusToUi(status: "draft" | "active" | "scheduled") {
   if (status === "active") return "Active";
   if (status === "scheduled") return "Scheduled";
   return "Draft";
+}
+
+function toDatetimeLocalValue(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 16);
 }
 
 function CardShell({
@@ -360,8 +432,7 @@ function Field({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition 
-focus:border-black/30"
+        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
       />
     </div>
   );
@@ -378,9 +449,9 @@ function SelectField({
   name: string;
   value: string;
   onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLSelectElement>
   ) => void;
-  options: string[];
+  options: { label: string; value: string }[];
 }) {
   return (
     <div>
@@ -392,12 +463,11 @@ function SelectField({
         name={name}
         value={value}
         onChange={onChange}
-        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition 
-focus:border-black/30"
+        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
       >
         {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
