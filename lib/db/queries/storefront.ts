@@ -122,8 +122,30 @@ function normalizeCategory(row: any): StorefrontCategory {
 }
 
 function normalizeProduct(row: any): StorefrontProduct {
+  const activeVariants = (row.product_variants ?? []).filter(
+    (variant: any) => variant.status === "active"
+  );
+
+  const variantStockTotal = activeVariants.reduce(
+    (sum: number, variant: any) => sum + Number(variant.stock_quantity ?? 0),
+    0
+  );
+
+  const variantPrices = activeVariants
+    .map((variant: any) =>
+      variant.price !== null && variant.price !== undefined
+        ? Number(variant.price)
+        : null
+    )
+    .filter((price: number | null): price is number => price !== null);
+
+  const lowestVariantPrice =
+    variantPrices.length > 0 ? Math.min(...variantPrices) : 0;
+
   const basePrice =
-    row.base_price !== null && row.base_price !== undefined
+    row.product_type === "variable"
+      ? lowestVariantPrice
+      : row.base_price !== null && row.base_price !== undefined
       ? Number(row.base_price)
       : row.price !== null && row.price !== undefined
       ? Number(row.price)
@@ -147,7 +169,10 @@ function normalizeProduct(row: any): StorefrontProduct {
     categorySlug: row.categories?.slug ?? null,
     price: basePrice,
     comparePrice,
-    stockQuantity: row.stock_quantity ?? 0,
+    stockQuantity:
+      row.product_type === "variable"
+        ? variantStockTotal
+        : row.stock_quantity ?? 0,
     productType: row.product_type,
     status: row.status,
     isVisible: Boolean(row.is_visible),
@@ -255,6 +280,11 @@ export const getPublishedProducts = cache(
         categories (
           name,
           slug
+        ),
+        product_variants (
+          price,
+          stock_quantity,
+          status
         )
       `)
       .eq("status", "published")
@@ -295,6 +325,11 @@ export const getFeaturedProducts = cache(
         categories (
           name,
           slug
+        ),
+        product_variants (
+          price,
+          stock_quantity,
+          status
         )
       `)
       .eq("status", "published")
@@ -337,6 +372,11 @@ export const getPublishedProductsByCategorySlug = cache(
         categories!inner (
           name,
           slug
+        ),
+        product_variants (
+          price,
+          stock_quantity,
+          status
         )
       `)
       .eq("status", "published")

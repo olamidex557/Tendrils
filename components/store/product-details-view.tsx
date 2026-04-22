@@ -52,7 +52,11 @@ export default function ProductDetailsView({
   );
 
   const defaultVariant =
-    product.variants.find((variant) => Number(variant.stockQuantity) > 0) ??
+    product.variants.find(
+      (variant) =>
+        variant.status === "active" && Number(variant.stockQuantity) > 0
+    ) ??
+    product.variants.find((variant) => variant.status === "active") ??
     product.variants[0] ??
     null;
 
@@ -77,6 +81,11 @@ export default function ProductDetailsView({
       ? Number(selectedVariant?.stockQuantity ?? 0)
       : Number(product.stockQuantity ?? 0);
 
+  const isVariantActive =
+    product.productType === "variable"
+      ? selectedVariant?.status === "active"
+      : true;
+
   const cartLine = useMemo(() => {
     const lineId =
       product.productType === "variable"
@@ -99,10 +108,12 @@ export default function ProductDetailsView({
 
   const quantityInCart = cartLine?.quantity ?? 0;
   const remainingStock = Math.max(0, effectiveStock - quantityInCart);
-  const canBuy = effectiveStock > 0 && remainingStock > 0;
+  const canBuy = isVariantActive && effectiveStock > 0 && remainingStock > 0;
 
   const stockMessage =
-    effectiveStock <= 0
+    !isVariantActive
+      ? "Unavailable"
+      : effectiveStock <= 0
       ? "Out of stock"
       : remainingStock <= 0
       ? "Maximum available quantity already in cart"
@@ -178,7 +189,7 @@ export default function ProductDetailsView({
           <div>
             <span
               className={`rounded-full px-3 py-1 text-xs font-medium ${
-                effectiveStock <= 0
+                !isVariantActive || effectiveStock <= 0
                   ? "bg-red-100 text-red-700"
                   : remainingStock <= 3
                   ? "bg-amber-100 text-amber-700"
@@ -218,7 +229,9 @@ export default function ProductDetailsView({
                   <div className="flex flex-wrap gap-2">
                     {product.variants.map((variant) => {
                       const active = selectedVariantId === variant.id;
-                      const soldOut = Number(variant.stockQuantity ?? 0) <= 0;
+                      const soldOut =
+                        variant.status !== "active" ||
+                        Number(variant.stockQuantity ?? 0) <= 0;
 
                       return (
                         <button

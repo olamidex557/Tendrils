@@ -227,6 +227,41 @@ export default function AdminNewProductPage() {
 
     startTransition(async () => {
       try {
+        const cleanedVariants = variants
+          .filter((variant) => variant.label.trim())
+          .map((variant) => ({
+            label: variant.label.trim(),
+            sku: variant.sku.trim() || null,
+            price: variant.price.trim() === "" ? null : Number(variant.price),
+            stock_quantity:
+              variant.stock.trim() === "" ? null : Number(variant.stock),
+            status: mapVariantStatus(variant.status),
+          }));
+
+        if (form.productType === "variable") {
+          if (normalizedAttributes.length === 0) {
+            setMessage("Add at least one attribute with values for a variable product.");
+            return;
+          }
+
+          if (cleanedVariants.length === 0) {
+            setMessage("Add at least one variant before saving.");
+            return;
+          }
+
+          const hasSellableVariant = cleanedVariants.some(
+            (variant) =>
+              variant.status === "active" &&
+              typeof variant.stock_quantity === "number" &&
+              variant.stock_quantity > 0
+          );
+
+          if (!hasSellableVariant) {
+            setMessage("Add stock to at least one active variant before saving.");
+            return;
+          }
+        }
+
         const payload =
           form.productType === "simple"
             ? {
@@ -263,15 +298,7 @@ export default function AdminNewProductPage() {
                 is_visible: form.visibility === "Visible",
                 sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
                 attributes: normalizedAttributes,
-                variants: variants
-                  .filter((variant) => variant.label.trim())
-                  .map((variant) => ({
-                    label: variant.label.trim(),
-                    sku: variant.sku.trim() || null,
-                    price: variant.price ? Number(variant.price) : null,
-                    stock_quantity: variant.stock ? Number(variant.stock) : 0,
-                    status: mapVariantStatus(variant.status),
-                  })),
+                variants: cleanedVariants,
               };
 
         await createProduct(payload);
