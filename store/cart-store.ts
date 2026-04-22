@@ -7,6 +7,7 @@ export type CartItem = {
   id: string;
   productId?: string;
   variantId?: string | null;
+  sku?: string;
   slug: string;
   name: string;
   price: number;
@@ -14,13 +15,18 @@ export type CartItem = {
   stockQuantity?: number | null;
   image?: string;
   category?: string;
+  selectedOptions?: Record<string, string>;
 };
 
 type CartStore = {
   items: CartItem[];
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
   removeItem: (id: string, variantId?: string | null) => void;
-  updateQuantity: (id: string, quantity: number, variantId?: string | null) => void;
+  updateQuantity: (
+    id: string,
+    quantity: number,
+    variantId?: string | null
+  ) => void;
   clearCart: () => void;
   getItemCount: () => number;
   getSubtotal: () => number;
@@ -54,7 +60,13 @@ export const useCartStore = create<CartStore>()(
 
             updatedItems[existingIndex] = {
               ...current,
+              productId: item.productId ?? current.productId,
+              variantId: item.variantId ?? current.variantId,
+              sku: item.sku ?? current.sku,
               stockQuantity: item.stockQuantity ?? current.stockQuantity,
+              image: item.image ?? current.image,
+              category: item.category ?? current.category,
+              selectedOptions: item.selectedOptions ?? current.selectedOptions,
               quantity: nextQty,
             };
 
@@ -92,7 +104,8 @@ export const useCartStore = create<CartStore>()(
                   }
 
                   const maxQty =
-                    typeof item.stockQuantity === "number" && item.stockQuantity >= 0
+                    typeof item.stockQuantity === "number" &&
+                    item.stockQuantity >= 0
                       ? item.stockQuantity
                       : 9999;
 

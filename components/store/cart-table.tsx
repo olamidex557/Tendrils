@@ -62,9 +62,30 @@ export default function CartTable() {
 
                   <div>
                     <h3 className="font-semibold text-black">{item.name}</h3>
+
                     <p className="mt-1 text-sm text-stone-500">
                       Category: {item.category || "General"}
                     </p>
+
+                    {item.selectedOptions &&
+                    Object.keys(item.selectedOptions).length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {Object.entries(item.selectedOptions).map(
+                          ([label, value]) => (
+                            <span
+                              key={`${label}-${value}`}
+                              className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700"
+                            >
+                              {label}: {value}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    ) : null}
+
+                    {item.sku ? (
+                      <p className="mt-2 text-xs text-stone-400">SKU: {item.sku}</p>
+                    ) : null}
 
                     {stock !== null ? (
                       <div className="mt-2">

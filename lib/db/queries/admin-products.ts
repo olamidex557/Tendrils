@@ -23,13 +23,13 @@ export type AdminEditProductRecord = {
     name: string;
     values: string[];
   }[];
-  variants: {
+  inventoryMatrix: {
     id: string;
-    label: string;
-    sku: string | null;
-    price: number | null;
+    size: string;
+    color: string;
     stockQuantity: number;
-    status: "active" | "inactive";
+    sku: string;
+    isActive: boolean;
   }[];
 };
 
@@ -75,16 +75,13 @@ function normalizeProduct(data: any): AdminEditProductRecord {
       name: attribute.name,
       values: Array.isArray(attribute.values) ? attribute.values : [],
     })),
-    variants: (data.product_variants ?? []).map((variant: any) => ({
-      id: variant.id,
-      label: variant.label,
-      sku: variant.sku ?? null,
-      price:
-        variant.price !== null && variant.price !== undefined
-          ? Number(variant.price)
-          : null,
-      stockQuantity: variant.stock_quantity ?? 0,
-      status: variant.status,
+    inventoryMatrix: (data.product_inventory_matrix ?? []).map((row: any) => ({
+      id: row.id,
+      size: row.size_value ?? "",
+      color: row.color_value ?? "",
+      stockQuantity: Number(row.stock_quantity ?? 0),
+      sku: row.sku ?? "",
+      isActive: Boolean(row.is_active),
     })),
   };
 }
@@ -117,13 +114,13 @@ async function fetchProductByField(field: "id" | "slug" | "sku", value: string) 
         name,
         values
       ),
-      product_variants (
+      product_inventory_matrix (
         id,
-        label,
-        sku,
-        price,
+        size_value,
+        color_value,
         stock_quantity,
-        status
+        sku,
+        is_active
       )
     `)
     .eq(field, value)

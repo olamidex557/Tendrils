@@ -10,10 +10,9 @@ import {
   UploadCloud,
   Plus,
   Trash2,
-  Layers3,
-  Sparkles,
   ChevronRight,
   Eye,
+  Grid3X3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createProduct } from "@/lib/actions/products";
@@ -26,23 +25,15 @@ type AttributeRow = {
   values: string;
 };
 
-type VariantRow = {
+type MatrixCell = {
   id: string;
-  label: string;
-  sku: string;
-  price: string;
+  size: string;
+  color: string;
   stock: string;
-  status: "Active" | "Inactive";
+  isActive: boolean;
 };
 
-const attributePresets = [
-  "Size",
-  "Color",
-  "Storage",
-  "Weight",
-  "Volume",
-  "Material",
-];
+const attributePresets = ["Size", "Color", "Material"];
 
 export default function AdminNewProductPage() {
   const [isPending, startTransition] = useTransition();
@@ -66,10 +57,11 @@ export default function AdminNewProductPage() {
   });
 
   const [attributes, setAttributes] = useState<AttributeRow[]>([
-    { id: makeId(), name: "", values: "" },
+    { id: makeId(), name: "Size", values: "" },
+    { id: makeId(), name: "Color", values: "" },
   ]);
 
-  const [variants, setVariants] = useState<VariantRow[]>([]);
+  const [matrixCells, setMatrixCells] = useState<MatrixCell[]>([]);
 
   function handleChange(
     e: React.ChangeEvent<
@@ -114,36 +106,6 @@ export default function AdminNewProductPage() {
     setAttributes((prev) => prev.filter((attribute) => attribute.id !== id));
   }
 
-  function addManualVariant() {
-    setVariants((prev) => [
-      ...prev,
-      {
-        id: makeId(),
-        label: "",
-        sku: "",
-        price: "",
-        stock: "",
-        status: "Active",
-      },
-    ]);
-  }
-
-  function removeVariant(id: string) {
-    setVariants((prev) => prev.filter((variant) => variant.id !== id));
-  }
-
-  function updateVariant(
-    id: string,
-    field: keyof Omit<VariantRow, "id">,
-    value: string
-  ) {
-    setVariants((prev) =>
-      prev.map((variant) =>
-        variant.id === id ? { ...variant, [field]: value } : variant
-      )
-    );
-  }
-
   const normalizedAttributes = useMemo(() => {
     return attributes
       .map((attribute) => ({
@@ -156,41 +118,66 @@ export default function AdminNewProductPage() {
       .filter((attribute) => attribute.name && attribute.values.length > 0);
   }, [attributes]);
 
-  function generateVariantsFromAttributes() {
-    if (normalizedAttributes.length === 0) {
-      setMessage("Add at least one attribute with values first.");
+  const sizeValues = useMemo(() => {
+    return (
+      normalizedAttributes.find(
+        (attribute) => attribute.name.toLowerCase() === "size"
+      )?.values ?? []
+    );
+  }, [normalizedAttributes]);
+
+  const colorValues = useMemo(() => {
+    return (
+      normalizedAttributes.find(
+        (attribute) => attribute.name.toLowerCase() === "color"
+      )?.values ?? []
+    );
+  }, [normalizedAttributes]);
+
+  function regenerateMatrix() {
+    if (sizeValues.length === 0) {
+      setMessage("Add Size values before generating the matrix.");
       return;
     }
 
-    const combinations = cartesianProduct(
-      normalizedAttributes.map((attribute) =>
-        attribute.values.map((value) => ({
-          attributeName: attribute.name,
-          value,
-        }))
-      )
-    );
+    if (colorValues.length === 0) {
+      setMessage("Add Color values before generating the matrix.");
+      return;
+    }
 
-    const generated: VariantRow[] = combinations.map((combination) => {
-      const label = combination.map((item) => item.value).join(" / ");
-      const skuSuffix = combination
-        .map((item) => item.value.replace(/\s+/g, "-").toUpperCase())
-        .join("-");
+    setMatrixCells((prev) => {
+      const next: MatrixCell[] = [];
 
-      return {
-        id: makeId(),
-        label,
-        sku: `${(form.sku || "AJK")
-          .replace(/\s+/g, "-")
-          .toUpperCase()}-${skuSuffix}`,
-        price: "",
-        stock: "",
-        status: "Active",
-      };
+      for (const size of sizeValues) {
+        for (const color of colorValues) {
+          const existing = prev.find(
+            (cell) => cell.size === size && cell.color === color
+          );
+
+          next.push({
+            id: existing?.id ?? makeId(),
+            size,
+            color,
+            stock: existing?.stock ?? "",
+            isActive: existing?.isActive ?? true,
+          });
+        }
+      }
+
+      return next;
     });
 
-    setVariants(generated);
     setMessage("");
+  }
+
+  function updateMatrixCell(
+    id: string,
+    field: keyof Omit<MatrixCell, "id" | "size" | "color">,
+    value: string | boolean
+  ) {
+    setMatrixCells((prev) =>
+      prev.map((cell) => (cell.id === id ? { ...cell, [field]: value } : cell))
+    );
   }
 
   function resetForm() {
@@ -211,14 +198,11 @@ export default function AdminNewProductPage() {
       productType: "simple",
     });
 
-    setAttributes([{ id: makeId(), name: "", values: "" }]);
-    setVariants([]);
-  }
-
-  function mapVariantStatus(
-    status: "Active" | "Inactive"
-  ): "active" | "inactive" {
-    return status === "Active" ? "active" : "inactive";
+    setAttributes([
+      { id: makeId(), name: "Size", values: "" },
+      { id: makeId(), name: "Color", values: "" },
+    ]);
+    setMatrixCells([]);
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -227,37 +211,26 @@ export default function AdminNewProductPage() {
 
     startTransition(async () => {
       try {
-        const cleanedVariants = variants
-          .filter((variant) => variant.label.trim())
-          .map((variant) => ({
-            label: variant.label.trim(),
-            sku: variant.sku.trim() || null,
-            price: variant.price.trim() === "" ? null : Number(variant.price),
-            stock_quantity:
-              variant.stock.trim() === "" ? null : Number(variant.stock),
-            status: mapVariantStatus(variant.status),
-          }));
+        const cleanedMatrix = matrixCells.map((cell) => ({
+          size: cell.size,
+          color: cell.color,
+          stock_quantity: cell.stock.trim() === "" ? 0 : Number(cell.stock),
+          is_active: cell.isActive,
+        }));
 
         if (form.productType === "variable") {
-          if (normalizedAttributes.length === 0) {
-            setMessage("Add at least one attribute with values for a variable product.");
+          if (sizeValues.length === 0) {
+            setMessage("Add at least one Size value.");
             return;
           }
 
-          if (cleanedVariants.length === 0) {
-            setMessage("Add at least one variant before saving.");
+          if (colorValues.length === 0) {
+            setMessage("Add at least one Color value.");
             return;
           }
 
-          const hasSellableVariant = cleanedVariants.some(
-            (variant) =>
-              variant.status === "active" &&
-              typeof variant.stock_quantity === "number" &&
-              variant.stock_quantity > 0
-          );
-
-          if (!hasSellableVariant) {
-            setMessage("Add stock to at least one active variant before saving.");
+          if (cleanedMatrix.length === 0) {
+            setMessage("Generate the stock matrix before saving.");
             return;
           }
         }
@@ -290,15 +263,17 @@ export default function AdminNewProductPage() {
                 image_url: form.imageUrl.trim() || undefined,
                 status: mapProductStatus(form.status),
                 product_type: "variable" as const,
-                base_price: null,
-                compare_price: null,
+                base_price: form.price ? Number(form.price) : null,
+                compare_price: form.comparePrice
+                  ? Number(form.comparePrice)
+                  : null,
                 stock_quantity: null,
                 sku: form.sku.trim() || null,
                 is_featured: form.featured,
                 is_visible: form.visibility === "Visible",
                 sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
                 attributes: normalizedAttributes,
-                variants: cleanedVariants,
+                inventoryMatrix: cleanedMatrix,
               };
 
         await createProduct(payload);
@@ -312,6 +287,10 @@ export default function AdminNewProductPage() {
       }
     });
   }
+
+  const matrixRowCount = sizeValues.length;
+  const matrixColumnCount = colorValues.length;
+  const totalMatrixCells = matrixCells.length;
 
   return (
     <section className="space-y-6">
@@ -330,7 +309,8 @@ export default function AdminNewProductPage() {
               Add New Product
             </h2>
             <p className="mt-2 text-sm text-stone-600">
-              Create a storefront-ready product with visibility and homepage controls.
+              Create a storefront-ready product with pricing, inventory, and
+              matrix stock controls.
             </p>
           </div>
 
@@ -373,7 +353,7 @@ export default function AdminNewProductPage() {
                 name="name"
                 value={form.name}
                 onChange={handleChange}
-                placeholder="e.g. Wireless Earbuds"
+                placeholder="e.g. Plain Tee"
                 required
               />
 
@@ -417,8 +397,8 @@ export default function AdminNewProductPage() {
                   />
                   <TypeCard
                     active={form.productType === "variable"}
-                    title="Variable Product"
-                    description="Use variants like size, color, storage, or weight."
+                    title="Matrix Product"
+                    description="Use Size × Color stock matrix with automatic SKU generation."
                     onClick={() => setProductType("variable")}
                   />
                 </div>
@@ -452,31 +432,35 @@ export default function AdminNewProductPage() {
             </div>
           </CardShell>
 
-          {form.productType === "simple" ? (
-            <CardShell
-              title="Pricing & Inventory"
-              subtitle="Use this for products without variants."
-            >
-              <div className="grid gap-5 md:grid-cols-2">
-                <Field
-                  label="Price"
-                  name="price"
-                  value={form.price}
-                  onChange={handleChange}
-                  placeholder="e.g. 145000"
-                  type="number"
-                  required
-                />
+          <CardShell
+            title="Pricing"
+            subtitle={
+              form.productType === "simple"
+                ? "Use this for products without options."
+                : "Set one base price for all size and color combinations."
+            }
+          >
+            <div className="grid gap-5 md:grid-cols-2">
+              <Field
+                label="Price"
+                name="price"
+                value={form.price}
+                onChange={handleChange}
+                placeholder="e.g. 120000"
+                type="number"
+                required
+              />
 
-                <Field
-                  label="Compare At Price"
-                  name="comparePrice"
-                  value={form.comparePrice}
-                  onChange={handleChange}
-                  placeholder="e.g. 165000"
-                  type="number"
-                />
+              <Field
+                label="Compare At Price"
+                name="comparePrice"
+                value={form.comparePrice}
+                onChange={handleChange}
+                placeholder="e.g. 145000"
+                type="number"
+              />
 
+              {form.productType === "simple" ? (
                 <Field
                   label="Stock Quantity"
                   name="stock"
@@ -486,22 +470,30 @@ export default function AdminNewProductPage() {
                   type="number"
                   required
                 />
+              ) : null}
 
-                <Field
-                  label="SKU"
-                  name="sku"
-                  value={form.sku}
-                  onChange={handleChange}
-                  placeholder="e.g. AJK-EL-001"
-                />
-              </div>
-            </CardShell>
-          ) : (
+              <Field
+                label={
+                  form.productType === "simple" ? "SKU" : "Base SKU Prefix"
+                }
+                name="sku"
+                value={form.sku}
+                onChange={handleChange}
+                placeholder={
+                  form.productType === "simple"
+                    ? "e.g. TEE-001"
+                    : "e.g. TEE"
+                }
+              />
+            </div>
+          </CardShell>
+
+          {form.productType === "variable" ? (
             <>
               <CardShell
-                icon={<Layers3 className="h-5 w-5 text-black" />}
+                icon={<Grid3X3 className="h-5 w-5 text-black" />}
                 title="Attributes"
-                subtitle="Create reusable option groups for your variants."
+                subtitle="Set Size and Color values, then generate the stock matrix."
               >
                 <div className="mb-5 flex flex-wrap gap-2">
                   {attributePresets.map((preset) => (
@@ -610,139 +602,140 @@ export default function AdminNewProductPage() {
                   <Button
                     type="button"
                     className="rounded-full bg-black px-5 text-white hover:bg-black/90"
-                    onClick={generateVariantsFromAttributes}
+                    onClick={regenerateMatrix}
                   >
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Variants
+                    Generate Stock Matrix
                   </Button>
                 </div>
               </CardShell>
 
               <CardShell
-                title="Variants"
-                subtitle="Set details for each variant combination."
+                title="Inventory Matrix"
+                subtitle="Set stock for every Size × Color combination. SKU is generated automatically."
               >
-                {variants.length === 0 ? (
+                {sizeValues.length === 0 || colorValues.length === 0 ? (
                   <div className="rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
                     <p className="text-sm font-medium text-black">
-                      No variants yet
+                      Size and Color are required
                     </p>
                     <p className="mt-2 text-sm text-stone-500">
-                      Add attributes above, then generate combinations or add
-                      manual rows.
+                      Add Size and Color values above, then generate the matrix.
                     </p>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="mt-5 rounded-full px-5"
-                      onClick={addManualVariant}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Variant Row
-                    </Button>
+                  </div>
+                ) : matrixCells.length === 0 ? (
+                  <div className="rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
+                    <p className="text-sm font-medium text-black">
+                      No matrix generated yet
+                    </p>
+                    <p className="mt-2 text-sm text-stone-500">
+                      Click “Generate Stock Matrix” to create stock cells for each size and color combination.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="rounded-[1.25rem] bg-stone-50 px-4 py-3 text-sm text-stone-600">
-                      {variants.length} variant
-                      {variants.length > 1 ? "s" : ""} ready to configure
+                      {matrixRowCount} size row{matrixRowCount !== 1 ? "s" : ""} ×{" "}
+                      {matrixColumnCount} color column
+                      {matrixColumnCount !== 1 ? "s" : ""} = {totalMatrixCells} stock cell
+                      {totalMatrixCells !== 1 ? "s" : ""}
                     </div>
 
-                    {variants.map((variant) => (
-                      <div
-                        key={variant.id}
-                        className="rounded-[1.25rem] border border-stone-200 p-4"
-                      >
-                        <div className="mb-4 flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-black">
-                            {variant.label || "New Variant"}
-                          </p>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border-separate border-spacing-2">
+                        <thead>
+                          <tr>
+                            <th className="rounded-2xl bg-stone-100 px-4 py-3 text-left text-sm font-semibold text-black">
+                              Size
+                            </th>
+                            {colorValues.map((color) => (
+                              <th
+                                key={color}
+                                className="rounded-2xl bg-stone-100 px-4 py-3 text-center text-sm font-semibold text-black"
+                              >
+                                {color}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
 
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => removeVariant(variant.id)}
-                            className="h-10 w-10 rounded-full"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <tbody>
+                          {sizeValues.map((size) => (
+                            <tr key={size}>
+                              <td className="rounded-2xl bg-stone-50 px-4 py-3 text-sm font-semibold text-black">
+                                {size}
+                              </td>
 
-                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                          <MiniField
-                            label="Variant Label"
-                            value={variant.label}
-                            onChange={(value) =>
-                              updateVariant(variant.id, "label", value)
-                            }
-                            placeholder="e.g. Black / M"
-                          />
-                          <MiniField
-                            label="SKU"
-                            value={variant.sku}
-                            onChange={(value) =>
-                              updateVariant(variant.id, "sku", value)
-                            }
-                            placeholder="e.g. AJK-BLK-M"
-                          />
-                          <MiniField
-                            label="Price"
-                            value={variant.price}
-                            onChange={(value) =>
-                              updateVariant(variant.id, "price", value)
-                            }
-                            placeholder="12000"
-                            type="number"
-                          />
-                          <MiniField
-                            label="Stock"
-                            value={variant.stock}
-                            onChange={(value) =>
-                              updateVariant(variant.id, "stock", value)
-                            }
-                            placeholder="8"
-                            type="number"
-                          />
-                        </div>
+                              {colorValues.map((color) => {
+                                const cell = matrixCells.find(
+                                  (entry) =>
+                                    entry.size === size && entry.color === color
+                                );
 
-                        <div className="mt-4 max-w-[220px]">
-                          <label className="mb-2 block text-sm font-medium text-black">
-                            Status
-                          </label>
-                          <select
-                            value={variant.status}
-                            onChange={(e) =>
-                              updateVariant(
-                                variant.id,
-                                "status",
-                                e.target.value
-                              )
-                            }
-                            className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
-                          >
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                          </select>
-                        </div>
-                      </div>
-                    ))}
+                                if (!cell) {
+                                  return (
+                                    <td
+                                      key={`${size}-${color}`}
+                                      className="rounded-2xl border border-dashed border-stone-200 px-3 py-3 text-center text-xs text-stone-400"
+                                    >
+                                      —
+                                    </td>
+                                  );
+                                }
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="rounded-full px-5"
-                      onClick={addManualVariant}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Variant Row
-                    </Button>
+                                return (
+                                  <td
+                                    key={`${size}-${color}`}
+                                    className="rounded-2xl border border-stone-200 p-3 align-top"
+                                  >
+                                    <div className="space-y-3">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={cell.stock}
+                                        onChange={(e) =>
+                                          updateMatrixCell(
+                                            cell.id,
+                                            "stock",
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="0"
+                                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm outline-none transition focus:border-black/30"
+                                      />
+
+                                      <label className="flex items-center gap-2 text-xs text-stone-600">
+                                        <input
+                                          type="checkbox"
+                                          checked={cell.isActive}
+                                          onChange={(e) =>
+                                            updateMatrixCell(
+                                              cell.id,
+                                              "isActive",
+                                              e.target.checked
+                                            )
+                                          }
+                                          className="h-4 w-4"
+                                        />
+                                        Active
+                                      </label>
+
+                                      <p className="text-[11px] text-stone-400">
+                                        SKU: Auto
+                                      </p>
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </CardShell>
             </>
-          )}
+          ) : null}
 
           <CardShell
             title="Storefront Controls"
@@ -892,13 +885,7 @@ export default function AdminNewProductPage() {
                 <div className="flex items-center justify-between">
                   <p className="text-xl font-bold text-black">
                     ₦
-                    {form.productType === "simple"
-                      ? form.price
-                        ? Number(form.price).toLocaleString()
-                        : "0"
-                      : variants[0]?.price
-                      ? Number(variants[0].price).toLocaleString()
-                      : "0"}
+                    {form.price ? Number(form.price).toLocaleString() : "0"}
                   </p>
 
                   <div className="flex gap-2">
@@ -913,6 +900,13 @@ export default function AdminNewProductPage() {
                     </span>
                   </div>
                 </div>
+
+                {form.productType === "variable" ? (
+                  <div className="rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-600">
+                    {sizeValues.length} size option{sizeValues.length !== 1 ? "s" : ""},{" "}
+                    {colorValues.length} color option{colorValues.length !== 1 ? "s" : ""}
+                  </div>
+                ) : null}
               </div>
             </div>
           </CardShell>
@@ -928,7 +922,10 @@ export default function AdminNewProductPage() {
                 label="Attributes"
                 value={String(normalizedAttributes.length)}
               />
-              <SummaryRow label="Variants" value={String(variants.length)} />
+              <SummaryRow
+                label="Matrix Cells"
+                value={String(matrixCells.length)}
+              />
               <SummaryRow label="Status" value={form.status} />
               <SummaryRow label="Visibility" value={form.visibility} />
               <SummaryRow
@@ -1061,35 +1058,6 @@ function Field({
   );
 }
 
-function MiniField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  type?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-black">
-        {label}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
-      />
-    </div>
-  );
-}
-
 function SelectField({
   label,
   name,
@@ -1138,14 +1106,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
         {value}
       </span>
     </div>
-  );
-}
-
-function cartesianProduct<T>(arrays: T[][]): T[][] {
-  if (arrays.length === 0) return [];
-  return arrays.reduce<T[][]>(
-    (acc, curr) => acc.flatMap((a) => curr.map((c) => [...a, c])),
-    [[]]
   );
 }
 

@@ -122,30 +122,17 @@ function normalizeCategory(row: any): StorefrontCategory {
 }
 
 function normalizeProduct(row: any): StorefrontProduct {
-  const activeVariants = (row.product_variants ?? []).filter(
-    (variant: any) => variant.status === "active"
+  const activeMatrixRows = (row.product_inventory_matrix ?? []).filter(
+    (entry: any) => Boolean(entry.is_active)
   );
 
-  const variantStockTotal = activeVariants.reduce(
-    (sum: number, variant: any) => sum + Number(variant.stock_quantity ?? 0),
+  const matrixStockTotal = activeMatrixRows.reduce(
+    (sum: number, entry: any) => sum + Number(entry.stock_quantity ?? 0),
     0
   );
 
-  const variantPrices = activeVariants
-    .map((variant: any) =>
-      variant.price !== null && variant.price !== undefined
-        ? Number(variant.price)
-        : null
-    )
-    .filter((price: number | null): price is number => price !== null);
-
-  const lowestVariantPrice =
-    variantPrices.length > 0 ? Math.min(...variantPrices) : 0;
-
   const basePrice =
-    row.product_type === "variable"
-      ? lowestVariantPrice
-      : row.base_price !== null && row.base_price !== undefined
+    row.base_price !== null && row.base_price !== undefined
       ? Number(row.base_price)
       : row.price !== null && row.price !== undefined
       ? Number(row.price)
@@ -171,8 +158,8 @@ function normalizeProduct(row: any): StorefrontProduct {
     comparePrice,
     stockQuantity:
       row.product_type === "variable"
-        ? variantStockTotal
-        : row.stock_quantity ?? 0,
+        ? matrixStockTotal
+        : Number(row.stock_quantity ?? 0),
     productType: row.product_type,
     status: row.status,
     isVisible: Boolean(row.is_visible),
@@ -198,41 +185,49 @@ function normalizeBanner(row: any): StorefrontBanner {
   };
 }
 
-export const getVisibleCategories = cache(async (): Promise<StorefrontCategory[]> => {
-  const supabase = await createClient();
+export const getVisibleCategories = cache(
+  async (): Promise<StorefrontCategory[]> => {
+    const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("categories")
-    .select("id, name, slug, description, image_url, is_featured, is_visible, sort_order")
-    .eq("is_visible", true)
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
+    const { data, error } = await supabase
+      .from("categories")
+      .select(
+        "id, name, slug, description, image_url, is_featured, is_visible, sort_order"
+      )
+      .eq("is_visible", true)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
 
-  if (error) {
-    throw new Error(`Failed to load categories: ${error.message}`);
+    if (error) {
+      throw new Error(`Failed to load categories: ${error.message}`);
+    }
+
+    return (data ?? []).map(normalizeCategory);
   }
+);
 
-  return (data ?? []).map(normalizeCategory);
-});
+export const getFeaturedCategories = cache(
+  async (): Promise<StorefrontCategory[]> => {
+    const supabase = await createClient();
 
-export const getFeaturedCategories = cache(async (): Promise<StorefrontCategory[]> => {
-  const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("categories")
+      .select(
+        "id, name, slug, description, image_url, is_featured, is_visible, sort_order"
+      )
+      .eq("is_visible", true)
+      .eq("is_featured", true)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true })
+      .limit(8);
 
-  const { data, error } = await supabase
-    .from("categories")
-    .select("id, name, slug, description, image_url, is_featured, is_visible, sort_order")
-    .eq("is_visible", true)
-    .eq("is_featured", true)
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true })
-    .limit(8);
+    if (error) {
+      throw new Error(`Failed to load featured categories: ${error.message}`);
+    }
 
-  if (error) {
-    throw new Error(`Failed to load featured categories: ${error.message}`);
+    return (data ?? []).map(normalizeCategory);
   }
-
-  return (data ?? []).map(normalizeCategory);
-});
+);
 
 export const getCategoryBySlug = cache(
   async (slug: string): Promise<StorefrontCategory | null> => {
@@ -240,7 +235,9 @@ export const getCategoryBySlug = cache(
 
     const { data, error } = await supabase
       .from("categories")
-      .select("id, name, slug, description, image_url, is_featured, is_visible, sort_order")
+      .select(
+        "id, name, slug, description, image_url, is_featured, is_visible, sort_order"
+      )
       .eq("slug", slug)
       .eq("is_visible", true)
       .maybeSingle();
@@ -281,10 +278,9 @@ export const getPublishedProducts = cache(
           name,
           slug
         ),
-        product_variants (
-          price,
+        product_inventory_matrix (
           stock_quantity,
-          status
+          is_active
         )
       `)
       .eq("status", "published")
@@ -326,10 +322,9 @@ export const getFeaturedProducts = cache(
           name,
           slug
         ),
-        product_variants (
-          price,
+        product_inventory_matrix (
           stock_quantity,
-          status
+          is_active
         )
       `)
       .eq("status", "published")
@@ -373,10 +368,9 @@ export const getPublishedProductsByCategorySlug = cache(
           name,
           slug
         ),
-        product_variants (
-          price,
+        product_inventory_matrix (
           stock_quantity,
-          status
+          is_active
         )
       `)
       .eq("status", "published")
@@ -393,123 +387,120 @@ export const getPublishedProductsByCategorySlug = cache(
   }
 );
 
-export const getProductBySlug = cache(
-  async (slug: string) => {
-    const supabase = await createClient();
-
-    const { data, error } = await supabase
-      .from("products")
-      .select(`
-        id,
-        slug,
-        name,
-        short_description,
-        description,
-        image_url,
-        status,
-        product_type,
-        base_price,
-        compare_price,
-        price,
-        stock_quantity,
-        sku,
-        is_visible,
-        is_featured,
-        sort_order,
-        categories (
-          id,
-          name,
-          slug
-        ),
-        product_attributes (
-          id,
-          name,
-          values
-        ),
-        product_variants (
-          id,
-          label,
-          sku,
-          price,
-          stock_quantity,
-          status
-        )
-      `)
-      .eq("slug", slug)
-      .eq("status", "published")
-      .eq("is_visible", true)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(`Failed to load product: ${error.message}`);
-    }
-
-    if (!data) return null;
-
-    return {
-      ...normalizeProduct(data),
-      sku: data.sku ?? null,
-      attributes: (data.product_attributes ?? []).map((attribute: any) => ({
-        id: attribute.id,
-        name: attribute.name,
-        values: Array.isArray(attribute.values) ? attribute.values : [],
-      })),
-      variants: (data.product_variants ?? []).map((variant: any) => ({
-        id: variant.id,
-        label: variant.label,
-        sku: variant.sku ?? null,
-        price:
-          variant.price !== null && variant.price !== undefined
-            ? Number(variant.price)
-            : null,
-        stockQuantity: variant.stock_quantity ?? 0,
-        status: variant.status,
-      })),
-    };
-  }
-);
-
-export const getActiveBanners = cache(async (): Promise<StorefrontBanner[]> => {
+export const getProductBySlug = cache(async (slug: string) => {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from("banners")
+    .from("products")
     .select(`
       id,
-      title,
-      subtitle,
-      cta_text,
-      cta_link,
-      placement,
-      status,
+      slug,
+      name,
+      short_description,
+      description,
       image_url,
-      priority,
-      schedule_text,
-      starts_at,
-      ends_at,
-      created_at
+      status,
+      product_type,
+      base_price,
+      compare_price,
+      price,
+      stock_quantity,
+      sku,
+      is_visible,
+      is_featured,
+      sort_order,
+      categories (
+        id,
+        name,
+        slug
+      ),
+      product_attributes (
+        id,
+        name,
+        values
+      ),
+      product_inventory_matrix (
+        id,
+        size_value,
+        color_value,
+        stock_quantity,
+        sku,
+        is_active
+      )
     `)
-    .in("status", ["active", "scheduled"])
-    .order("priority", { ascending: true })
-    .order("created_at", { ascending: false });
+    .eq("slug", slug)
+    .eq("status", "published")
+    .eq("is_visible", true)
+    .maybeSingle();
 
   if (error) {
-    throw new Error(`Failed to load banners: ${error.message}`);
+    throw new Error(`Failed to load product: ${error.message}`);
   }
 
-  const now = new Date();
+  if (!data) return null;
 
-  return (data ?? [])
-    .map(normalizeBanner)
-    .filter((banner) => {
-      const startsOk =
-        !banner.startsAt ||
-        new Date(banner.startsAt).getTime() <= now.getTime();
-
-      const endsOk =
-        !banner.endsAt ||
-        new Date(banner.endsAt).getTime() >= now.getTime();
-
-      return startsOk && endsOk;
-    });
+  return {
+    ...normalizeProduct(data),
+    sku: data.sku ?? null,
+    attributes: (data.product_attributes ?? []).map((attribute: any) => ({
+      id: attribute.id,
+      name: attribute.name,
+      values: Array.isArray(attribute.values) ? attribute.values : [],
+    })),
+    inventoryMatrix: (data.product_inventory_matrix ?? []).map((entry: any) => ({
+      id: entry.id,
+      size: entry.size_value ?? "",
+      color: entry.color_value ?? "",
+      stockQuantity: Number(entry.stock_quantity ?? 0),
+      sku: entry.sku ?? null,
+      isActive: Boolean(entry.is_active),
+    })),
+  };
 });
+
+export const getActiveBanners = cache(
+  async (): Promise<StorefrontBanner[]> => {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("banners")
+      .select(`
+        id,
+        title,
+        subtitle,
+        cta_text,
+        cta_link,
+        placement,
+        status,
+        image_url,
+        priority,
+        schedule_text,
+        starts_at,
+        ends_at,
+        created_at
+      `)
+      .in("status", ["active", "scheduled"])
+      .order("priority", { ascending: true })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to load banners: ${error.message}`);
+    }
+
+    const now = new Date();
+
+    return (data ?? [])
+      .map(normalizeBanner)
+      .filter((banner) => {
+        const startsOk =
+          !banner.startsAt ||
+          new Date(banner.startsAt).getTime() <= now.getTime();
+
+        const endsOk =
+          !banner.endsAt ||
+          new Date(banner.endsAt).getTime() >= now.getTime();
+
+        return startsOk && endsOk;
+      });
+  }
+);
