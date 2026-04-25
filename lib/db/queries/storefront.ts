@@ -12,6 +12,13 @@ export type StorefrontCategory = {
   sortOrder: number;
 };
 
+export type StorefrontMoqPricing = {
+  id: string;
+  minQuantity: number;
+  pricePerUnit: number;
+  isActive: boolean;
+};
+
 export type StorefrontProduct = {
   id: string;
   slug: string;
@@ -119,6 +126,18 @@ function normalizeCategory(row: any): StorefrontCategory {
     isVisible: Boolean(row.is_visible),
     sortOrder: row.sort_order ?? 100,
   };
+}
+
+function normalizeMoqPricing(rows: any[] | null | undefined): StorefrontMoqPricing[] {
+  return (rows ?? [])
+    .map((tier) => ({
+      id: tier.id,
+      minQuantity: Number(tier.min_quantity ?? 0),
+      pricePerUnit: Number(tier.price_per_unit ?? 0),
+      isActive: Boolean(tier.is_active),
+    }))
+    .filter((tier) => tier.isActive && tier.minQuantity > 0)
+    .sort((a, b) => a.minQuantity - b.minQuantity);
 }
 
 function normalizeProduct(row: any): StorefrontProduct {
@@ -426,6 +445,12 @@ export const getProductBySlug = cache(async (slug: string) => {
         stock_quantity,
         sku,
         is_active
+      ),
+      product_moq_pricing (
+        id,
+        min_quantity,
+        price_per_unit,
+        is_active
       )
     `)
     .eq("slug", slug)
@@ -455,6 +480,7 @@ export const getProductBySlug = cache(async (slug: string) => {
       sku: entry.sku ?? null,
       isActive: Boolean(entry.is_active),
     })),
+    moqPricing: normalizeMoqPricing(data.product_moq_pricing),
   };
 });
 

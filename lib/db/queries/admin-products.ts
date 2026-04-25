@@ -31,11 +31,17 @@ export type AdminEditProductRecord = {
     sku: string;
     isActive: boolean;
   }[];
+  moqPricing: {
+    id: string;
+    minQuantity: number;
+    pricePerUnit: number;
+    isActive: boolean;
+  }[];
 };
 
 function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value.trim()
   );
 }
 
@@ -44,8 +50,8 @@ function normalizeProduct(data: any): AdminEditProductRecord {
     data.base_price !== null && data.base_price !== undefined
       ? Number(data.base_price)
       : data.price !== null && data.price !== undefined
-      ? Number(data.price)
-      : null;
+        ? Number(data.price)
+        : null;
 
   return {
     id: data.id,
@@ -70,11 +76,13 @@ function normalizeProduct(data: any): AdminEditProductRecord {
     isVisible: Boolean(data.is_visible),
     sortOrder: data.sort_order ?? 100,
     categoryName: data.categories?.name ?? null,
+
     attributes: (data.product_attributes ?? []).map((attribute: any) => ({
       id: attribute.id,
       name: attribute.name,
       values: Array.isArray(attribute.values) ? attribute.values : [],
     })),
+
     inventoryMatrix: (data.product_inventory_matrix ?? []).map((row: any) => ({
       id: row.id,
       size: row.size_value ?? "",
@@ -83,6 +91,15 @@ function normalizeProduct(data: any): AdminEditProductRecord {
       sku: row.sku ?? "",
       isActive: Boolean(row.is_active),
     })),
+
+    moqPricing: (data.product_moq_pricing ?? [])
+      .map((tier: any) => ({
+        id: tier.id,
+        minQuantity: Number(tier.min_quantity ?? 0),
+        pricePerUnit: Number(tier.price_per_unit ?? 0),
+        isActive: Boolean(tier.is_active),
+      }))
+      .sort((a: any, b: any) => a.minQuantity - b.minQuantity),
   };
 }
 
@@ -121,6 +138,12 @@ async function fetchProductByField(field: "id" | "slug" | "sku", value: string) 
         stock_quantity,
         sku,
         is_active
+      ),
+      product_moq_pricing (
+        id,
+        min_quantity,
+        price_per_unit,
+        is_active
       )
     `)
     .eq(field, value)
@@ -135,27 +158,25 @@ async function fetchProductByField(field: "id" | "slug" | "sku", value: string) 
 
 export const getAdminProductById = cache(
   async (productIdentifier: string): Promise<AdminEditProductRecord | null> => {
-    if (!productIdentifier?.trim()) {
-      return null;
-    }
+    if (!productIdentifier?.trim()) return null;
 
     let data: any = null;
 
-    if (isUuid(productIdentifier)) {
-      data = await fetchProductByField("id", productIdentifier);
+    const cleanIdentifier = productIdentifier.trim();
+
+    if (isUuid(cleanIdentifier)) {
+      data = await fetchProductByField("id", cleanIdentifier);
     }
 
     if (!data) {
-      data = await fetchProductByField("slug", productIdentifier);
+      data = await fetchProductByField("slug", cleanIdentifier);
     }
 
     if (!data) {
-      data = await fetchProductByField("sku", productIdentifier);
+      data = await fetchProductByField("sku", cleanIdentifier);
     }
 
-    if (!data) {
-      return null;
-    }
+    if (!data) return null;
 
     return normalizeProduct(data);
   }

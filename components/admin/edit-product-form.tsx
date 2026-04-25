@@ -35,6 +35,13 @@ type MatrixCell = {
   isActive: boolean;
 };
 
+type MoqTier = {
+  id: string;
+  minQuantity: string;
+  pricePerUnit: string;
+  isActive: boolean;
+};
+
 const attributePresets = ["Size", "Color", "Material"];
 
 type EditProductFormProps = {
@@ -87,6 +94,15 @@ export default function EditProductForm({ product }: EditProductFormProps) {
     }))
   );
 
+  const [moqTiers, setMoqTiers] = useState<MoqTier[]>(
+    (product.moqPricing ?? []).map((tier) => ({
+      id: tier.id,
+      minQuantity: String(tier.minQuantity ?? ""),
+      pricePerUnit: String(tier.pricePerUnit ?? ""),
+      isActive: tier.isActive,
+    }))
+  );
+
   function handleChange(
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -128,6 +144,32 @@ export default function EditProductForm({ product }: EditProductFormProps) {
 
   function removeAttributeRow(id: string) {
     setAttributes((prev) => prev.filter((attribute) => attribute.id !== id));
+  }
+
+  function addMoqTier() {
+    setMoqTiers((prev) => [
+      ...prev,
+      {
+        id: makeId(),
+        minQuantity: "",
+        pricePerUnit: "",
+        isActive: true,
+      },
+    ]);
+  }
+
+  function updateMoqTier(
+    id: string,
+    field: keyof Omit<MoqTier, "id">,
+    value: string | boolean
+  ) {
+    setMoqTiers((prev) =>
+      prev.map((tier) => (tier.id === id ? { ...tier, [field]: value } : tier))
+    );
+  }
+
+  function removeMoqTier(id: string) {
+    setMoqTiers((prev) => prev.filter((tier) => tier.id !== id));
   }
 
   const normalizedAttributes = useMemo(() => {
@@ -217,6 +259,17 @@ export default function EditProductForm({ product }: EditProductFormProps) {
           is_active: cell.isActive,
         }));
 
+        const cleanedMoqPricing = moqTiers
+          .filter(
+            (tier) =>
+              tier.minQuantity.trim() !== "" && tier.pricePerUnit.trim() !== ""
+          )
+          .map((tier) => ({
+            min_quantity: Number(tier.minQuantity),
+            price_per_unit: Number(tier.pricePerUnit),
+            is_active: tier.isActive,
+          }));
+
         if (form.productType === "variable") {
           if (sizeValues.length === 0) {
             setMessage("Add at least one Size value.");
@@ -253,6 +306,7 @@ export default function EditProductForm({ product }: EditProductFormProps) {
                 is_featured: form.featured,
                 is_visible: form.visibility === "Visible",
                 sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
+                moqPricing: cleanedMoqPricing,
               }
             : {
                 name: form.name.trim(),
@@ -273,14 +327,15 @@ export default function EditProductForm({ product }: EditProductFormProps) {
                 sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
                 attributes: normalizedAttributes,
                 inventoryMatrix: cleanedMatrix,
+                moqPricing: cleanedMoqPricing,
               };
 
         await updateProduct(product.id, payload);
         setMessage("Product updated successfully.");
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to update product.";
-        setMessage(errorMessage);
+        setMessage(
+          error instanceof Error ? error.message : "Failed to update product."
+        );
       }
     });
   }
@@ -306,7 +361,8 @@ export default function EditProductForm({ product }: EditProductFormProps) {
               Edit Product
             </h2>
             <p className="mt-2 text-sm text-stone-600">
-              Update product information, pricing, visibility, and matrix stock.
+              Update product information, pricing, MOQ, visibility, and matrix
+              stock.
             </p>
           </div>
 
@@ -315,6 +371,7 @@ export default function EditProductForm({ product }: EditProductFormProps) {
               <Save className="mr-2 h-4 w-4" />
               Save Changes
             </Button>
+
             <Button
               type="submit"
               form="edit-product-form"
@@ -479,6 +536,109 @@ export default function EditProductForm({ product }: EditProductFormProps) {
             </div>
           </CardShell>
 
+          <CardShell
+            title="MOQ / Bulk Pricing"
+            subtitle="Edit discounted unit prices for customers buying in bulk."
+          >
+            <div className="space-y-4">
+              {moqTiers.length === 0 ? (
+                <div className="rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
+                  <p className="text-sm font-medium text-black">
+                    No MOQ tiers yet
+                  </p>
+                  <p className="mt-2 text-sm text-stone-500">
+                    Add tiers like 6 pieces at ₦10,000 or 12 pieces at ₦9,000.
+                  </p>
+                </div>
+              ) : (
+                moqTiers.map((tier) => (
+                  <div
+                    key={tier.id}
+                    className="grid gap-4 rounded-[1.25rem] border border-stone-200 p-4 md:grid-cols-[1fr_1fr_auto]"
+                  >
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-black">
+                        Minimum Quantity
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={tier.minQuantity}
+                        onChange={(e) =>
+                          updateMoqTier(
+                            tier.id,
+                            "minQuantity",
+                            e.target.value
+                          )
+                        }
+                        placeholder="e.g. 6"
+                        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-black">
+                        Unit Price
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={tier.pricePerUnit}
+                        onChange={(e) =>
+                          updateMoqTier(
+                            tier.id,
+                            "pricePerUnit",
+                            e.target.value
+                          )
+                        }
+                        placeholder="e.g. 10000"
+                        className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
+                      />
+                    </div>
+
+                    <div className="flex items-end gap-3">
+                      <label className="flex h-12 items-center gap-2 text-sm text-stone-600">
+                        <input
+                          type="checkbox"
+                          checked={tier.isActive}
+                          onChange={(e) =>
+                            updateMoqTier(
+                              tier.id,
+                              "isActive",
+                              e.target.checked
+                            )
+                          }
+                          className="h-4 w-4"
+                        />
+                        Active
+                      </label>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeMoqTier(tier.id)}
+                        className="h-12 w-12 rounded-full"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full px-5"
+                onClick={addMoqTier}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add MOQ Tier
+              </Button>
+            </div>
+          </CardShell>
+
           {form.productType === "variable" ? (
             <>
               <CardShell
@@ -610,7 +770,8 @@ export default function EditProductForm({ product }: EditProductFormProps) {
                       Size and Color are required
                     </p>
                     <p className="mt-2 text-sm text-stone-500">
-                      Add Size and Color values above, then regenerate the matrix.
+                      Add Size and Color values above, then regenerate the
+                      matrix.
                     </p>
                   </div>
                 ) : matrixCells.length === 0 ? (
@@ -619,15 +780,17 @@ export default function EditProductForm({ product }: EditProductFormProps) {
                       No matrix loaded yet
                     </p>
                     <p className="mt-2 text-sm text-stone-500">
-                      Click “Regenerate Stock Matrix” to create stock cells for each size and color combination.
+                      Click “Regenerate Stock Matrix” to create stock cells for
+                      each size and color combination.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="rounded-[1.25rem] bg-stone-50 px-4 py-3 text-sm text-stone-600">
-                      {matrixRowCount} size row{matrixRowCount !== 1 ? "s" : ""} ×{" "}
-                      {matrixColumnCount} color column
-                      {matrixColumnCount !== 1 ? "s" : ""} = {totalMatrixCells} stock cell
+                      {matrixRowCount} size row
+                      {matrixRowCount !== 1 ? "s" : ""} × {matrixColumnCount}{" "}
+                      color column{matrixColumnCount !== 1 ? "s" : ""} ={" "}
+                      {totalMatrixCells} stock cell
                       {totalMatrixCells !== 1 ? "s" : ""}
                     </div>
 
@@ -659,7 +822,8 @@ export default function EditProductForm({ product }: EditProductFormProps) {
                               {colorValues.map((color) => {
                                 const cell = matrixCells.find(
                                   (entry) =>
-                                    entry.size === size && entry.color === color
+                                    entry.size === size &&
+                                    entry.color === color
                                 );
 
                                 if (!cell) {
@@ -760,9 +924,12 @@ export default function EditProductForm({ product }: EditProductFormProps) {
                 className="h-4 w-4"
               />
               <div>
-                <p className="text-sm font-medium text-black">Featured Product</p>
+                <p className="text-sm font-medium text-black">
+                  Featured Product
+                </p>
                 <p className="text-sm text-stone-500">
-                  Prioritize this product in homepage and featured storefront sections.
+                  Prioritize this product in homepage and featured storefront
+                  sections.
                 </p>
               </div>
             </label>
@@ -862,8 +1029,17 @@ export default function EditProductForm({ product }: EditProductFormProps) {
 
                 {form.productType === "variable" ? (
                   <div className="rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-600">
-                    {sizeValues.length} size option{sizeValues.length !== 1 ? "s" : ""},{" "}
-                    {colorValues.length} color option{colorValues.length !== 1 ? "s" : ""}
+                    {sizeValues.length} size option
+                    {sizeValues.length !== 1 ? "s" : ""},{" "}
+                    {colorValues.length} color option
+                    {colorValues.length !== 1 ? "s" : ""}
+                  </div>
+                ) : null}
+
+                {moqTiers.length > 0 ? (
+                  <div className="rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-600">
+                    {moqTiers.length} MOQ tier
+                    {moqTiers.length !== 1 ? "s" : ""}
                   </div>
                 ) : null}
               </div>
@@ -877,11 +1053,21 @@ export default function EditProductForm({ product }: EditProductFormProps) {
             <div className="space-y-3">
               <SummaryRow label="Type" value={form.productType} />
               <SummaryRow label="Category" value={form.category || "—"} />
-              <SummaryRow label="Attributes" value={String(normalizedAttributes.length)} />
-              <SummaryRow label="Matrix Cells" value={String(matrixCells.length)} />
+              <SummaryRow
+                label="Attributes"
+                value={String(normalizedAttributes.length)}
+              />
+              <SummaryRow
+                label="Matrix Cells"
+                value={String(matrixCells.length)}
+              />
+              <SummaryRow label="MOQ Tiers" value={String(moqTiers.length)} />
               <SummaryRow label="Status" value={form.status} />
               <SummaryRow label="Visibility" value={form.visibility} />
-              <SummaryRow label="Featured" value={form.featured ? "Yes" : "No"} />
+              <SummaryRow
+                label="Featured"
+                value={form.featured ? "Yes" : "No"}
+              />
               <SummaryRow label="Sort Order" value={form.sortOrder || "100"} />
             </div>
           </CardShell>
@@ -895,8 +1081,12 @@ export default function EditProductForm({ product }: EditProductFormProps) {
                 <Clock3 className="h-5 w-5 text-stone-700" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-black">Loaded from database</p>
-                <p className="text-sm text-stone-500">Editing real product data</p>
+                <p className="text-sm font-semibold text-black">
+                  Loaded from database
+                </p>
+                <p className="text-sm text-stone-500">
+                  Editing real product data
+                </p>
               </div>
             </div>
           </CardShell>
@@ -1003,7 +1193,9 @@ function Field({
   name: string;
   value: string;
   onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => void;
   placeholder?: string;
   type?: string;
@@ -1011,10 +1203,7 @@ function Field({
 }) {
   return (
     <div>
-      <label
-        htmlFor={name}
-        className="mb-2 block text-sm font-medium text-black"
-      >
+      <label htmlFor={name} className="mb-2 block text-sm font-medium text-black">
         {label}
       </label>
       <input
@@ -1042,16 +1231,15 @@ function SelectField({
   name: string;
   value: string;
   onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => void;
   options: string[];
 }) {
   return (
     <div>
-      <label
-        htmlFor={name}
-        className="mb-2 block text-sm font-medium text-black"
-      >
+      <label htmlFor={name} className="mb-2 block text-sm font-medium text-black">
         {label}
       </label>
       <select

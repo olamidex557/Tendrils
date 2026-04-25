@@ -15,6 +15,12 @@ type ProductInventoryMatrixInput = {
   is_active?: boolean;
 };
 
+type ProductMoqPricingInput = {
+  min_quantity: number;
+  price_per_unit: number;
+  is_active?: boolean;
+};
+
 type ProductInput = {
   name: string;
   category: string;
@@ -32,6 +38,7 @@ type ProductInput = {
   sort_order?: number;
   attributes?: ProductAttributeInput[];
   inventoryMatrix?: ProductInventoryMatrixInput[];
+  moqPricing?: ProductMoqPricingInput[];
 };
 
 function slugify(value: string) {
@@ -61,10 +68,9 @@ function generateMatrixSku(params: {
       ? normalizeSkuPart(params.baseSku)
       : normalizeSkuPart(params.productName);
 
-  const sizePart = normalizeSkuPart(params.size);
-  const colorPart = normalizeSkuPart(params.color);
-
-  return `${base}-${sizePart}-${colorPart}`;
+  return `${base}-${normalizeSkuPart(params.size)}-${normalizeSkuPart(
+    params.color
+  )}`;
 }
 
 async function resolveCategoryId(category: string) {
@@ -76,13 +82,8 @@ async function resolveCategoryId(category: string) {
     .eq("slug", normalizedCategorySlug)
     .maybeSingle();
 
-  if (categorySlugError) {
-    throw new Error(categorySlugError.message);
-  }
-
-  if (categoryBySlug?.id) {
-    return categoryBySlug.id;
-  }
+  if (categorySlugError) throw new Error(categorySlugError.message);
+  if (categoryBySlug?.id) return categoryBySlug.id;
 
   const { data: categoryByName, error: categoryNameError } = await supabaseAdmin
     .from("categories")
@@ -90,9 +91,7 @@ async function resolveCategoryId(category: string) {
     .eq("name", category)
     .maybeSingle();
 
-  if (categoryNameError) {
-    throw new Error(categoryNameError.message);
-  }
+  if (categoryNameError) throw new Error(categoryNameError.message);
 
   return categoryByName?.id ?? null;
 }
@@ -102,7 +101,8 @@ function getAttributeValues(
   attributeName: string
 ) {
   const match = (attributes ?? []).find(
-    (attribute) => attribute.name.trim().toLowerCase() === attributeName.toLowerCase()
+    (attribute) =>
+      attribute.name.trim().toLowerCase() === attributeName.toLowerCase()
   );
 
   return match?.values ?? [];
@@ -138,9 +138,25 @@ function validateMatrixInput(input: ProductInput) {
 
   for (const key of expectedKeys) {
     if (!receivedKeys.has(key)) {
-      throw new Error("Inventory matrix is incomplete. Please fill all size and color combinations.");
+      throw new Error(
+        "Inventory matrix is incomplete. Please fill all size and color combinations."
+      );
     }
   }
+}
+
+function cleanMoqPricing(input: ProductMoqPricingInput[] | undefined) {
+  return (input ?? [])
+    .filter(
+      (tier) =>
+        Number(tier.min_quantity) > 0 && Number(tier.price_per_unit) >= 0
+    )
+    .map((tier) => ({
+      min_quantity: Number(tier.min_quantity),
+      price_per_unit: Number(tier.price_per_unit),
+      is_active: tier.is_active ?? true,
+    }))
+    .sort((a, b) => a.min_quantity - b.min_quantity);
 }
 
 async function insertProductAttributes(
@@ -157,15 +173,10 @@ async function insertProductAttributes(
     }))
   );
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 }
 
-async function insertInventoryMatrix(
-  productId: string,
-  input: ProductInput
-) {
+async function insertInventoryMatrix(productId: string, input: ProductInput) {
   if (input.product_type !== "variable") return;
   if (!input.inventoryMatrix?.length) return;
 
@@ -187,9 +198,27 @@ async function insertInventoryMatrix(
     .from("product_inventory_matrix")
     .insert(rows);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
+}
+
+async function insertMoqPricing(
+  productId: string,
+  moqPricing: ProductMoqPricingInput[] | undefined
+) {
+  const tiers = cleanMoqPricing(moqPricing);
+
+  if (tiers.length === 0) return;
+
+  const { error } = await supabaseAdmin.from("product_moq_pricing").insert(
+    tiers.map((tier) => ({
+      product_id: productId,
+      min_quantity: tier.min_quantity,
+      price_per_unit: tier.price_per_unit,
+      is_active: tier.is_active,
+    }))
+  );
+
+  if (error) throw new Error(error.message);
 }
 
 export async function createProduct(input: ProductInput) {
@@ -212,7 +241,8 @@ export async function createProduct(input: ProductInput) {
       price: input.base_price ?? null,
       base_price: input.base_price ?? null,
       compare_price: input.compare_price ?? null,
-      stock_quantity: input.product_type === "simple" ? input.stock_quantity ?? null : null,
+      stock_quantity:
+        input.product_type === "simple" ? input.stock_quantity ?? null : null,
       sku: input.sku ?? null,
       is_featured: input.is_featured ?? false,
       is_visible: input.is_visible ?? true,
@@ -221,17 +251,18 @@ export async function createProduct(input: ProductInput) {
     .select("id, slug")
     .single();
 
-  if (productError) {
-    throw new Error(productError.message);
-  }
+  if (productError) throw new Error(productError.message);
 
   if (input.product_type === "variable") {
     await insertProductAttributes(product.id, input.attributes);
     await insertInventoryMatrix(product.id, input);
   }
 
+  await insertMoqPricing(product.id, input.moqPricing);
+
   revalidatePath("/admin/products");
   revalidatePath("/products");
+  revalidatePath(`/products/${product.slug}`);
   revalidatePath("/");
 }
 
@@ -239,12 +270,13 @@ export async function updateProduct(productId: string, input: ProductInput) {
   validateMatrixInput(input);
 
   const categoryId = await resolveCategoryId(input.category);
+  const productSlug = slugify(input.name);
 
   const { error: productError } = await supabaseAdmin
     .from("products")
     .update({
       name: input.name,
-      slug: slugify(input.name),
+      slug: productSlug,
       short_description: input.short_description || null,
       description: input.description || null,
       category_id: categoryId,
@@ -254,7 +286,8 @@ export async function updateProduct(productId: string, input: ProductInput) {
       price: input.base_price ?? null,
       base_price: input.base_price ?? null,
       compare_price: input.compare_price ?? null,
-      stock_quantity: input.product_type === "simple" ? input.stock_quantity ?? null : null,
+      stock_quantity:
+        input.product_type === "simple" ? input.stock_quantity ?? null : null,
       sku: input.sku ?? null,
       is_featured: input.is_featured ?? false,
       is_visible: input.is_visible ?? true,
@@ -263,34 +296,38 @@ export async function updateProduct(productId: string, input: ProductInput) {
     })
     .eq("id", productId);
 
-  if (productError) {
-    throw new Error(productError.message);
-  }
+  if (productError) throw new Error(productError.message);
 
   const { error: deleteAttributesError } = await supabaseAdmin
     .from("product_attributes")
     .delete()
     .eq("product_id", productId);
 
-  if (deleteAttributesError) {
-    throw new Error(deleteAttributesError.message);
-  }
+  if (deleteAttributesError) throw new Error(deleteAttributesError.message);
 
   const { error: deleteMatrixError } = await supabaseAdmin
     .from("product_inventory_matrix")
     .delete()
     .eq("product_id", productId);
 
-  if (deleteMatrixError) {
-    throw new Error(deleteMatrixError.message);
-  }
+  if (deleteMatrixError) throw new Error(deleteMatrixError.message);
+
+  const { error: deleteMoqError } = await supabaseAdmin
+    .from("product_moq_pricing")
+    .delete()
+    .eq("product_id", productId);
+
+  if (deleteMoqError) throw new Error(deleteMoqError.message);
 
   if (input.product_type === "variable") {
     await insertProductAttributes(productId, input.attributes);
     await insertInventoryMatrix(productId, input);
   }
 
+  await insertMoqPricing(productId, input.moqPricing);
+
   revalidatePath("/admin/products");
   revalidatePath("/products");
+  revalidatePath(`/products/${productSlug}`);
   revalidatePath("/");
 }

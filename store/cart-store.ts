@@ -3,6 +3,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export type CartMoqPricing = {
+  id: string;
+  minQuantity: number;
+  pricePerUnit: number;
+  isActive: boolean;
+};
+
 export type CartItem = {
   id: string;
   productId?: string;
@@ -11,11 +18,13 @@ export type CartItem = {
   slug: string;
   name: string;
   price: number;
+  basePrice?: number;
   quantity: number;
   stockQuantity?: number | null;
   image?: string;
   category?: string;
   selectedOptions?: Record<string, string>;
+  moqPricing?: CartMoqPricing[];
 };
 
 type CartStore = {
@@ -34,6 +43,24 @@ type CartStore = {
 
 function isSameCartLine(item: CartItem, id: string, variantId?: string | null) {
   return item.id === id && (item.variantId ?? null) === (variantId ?? null);
+}
+
+function getBulkPrice(item: CartItem, quantity: number) {
+  const basePrice = Number(item.basePrice ?? item.price);
+
+  const appliedTier =
+    [...(item.moqPricing ?? [])]
+      .filter(
+        (tier) =>
+          tier.isActive &&
+          Number(tier.minQuantity) > 0 &&
+          Number(tier.pricePerUnit) >= 0 &&
+          quantity >= Number(tier.minQuantity)
+      )
+      .sort((a, b) => Number(b.minQuantity) - Number(a.minQuantity))[0] ??
+    null;
+
+  return appliedTier ? Number(appliedTier.pricePerUnit) : basePrice;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -58,27 +85,40 @@ export const useCartStore = create<CartStore>()(
             const current = updatedItems[existingIndex];
             const nextQty = Math.min(current.quantity + requestedQty, maxQty);
 
-            updatedItems[existingIndex] = {
+            const mergedItem: CartItem = {
               ...current,
               productId: item.productId ?? current.productId,
               variantId: item.variantId ?? current.variantId,
               sku: item.sku ?? current.sku,
+              basePrice: item.basePrice ?? current.basePrice ?? current.price,
               stockQuantity: item.stockQuantity ?? current.stockQuantity,
               image: item.image ?? current.image,
               category: item.category ?? current.category,
               selectedOptions: item.selectedOptions ?? current.selectedOptions,
+              moqPricing: item.moqPricing ?? current.moqPricing,
               quantity: nextQty,
+            };
+
+            updatedItems[existingIndex] = {
+              ...mergedItem,
+              price: getBulkPrice(mergedItem, nextQty),
             };
 
             return { items: updatedItems };
           }
 
+          const nextItem: CartItem = {
+            ...item,
+            basePrice: item.basePrice ?? item.price,
+            quantity: Math.min(requestedQty, maxQty),
+          };
+
           return {
             items: [
               ...state.items,
               {
-                ...item,
-                quantity: Math.min(requestedQty, maxQty),
+                ...nextItem,
+                price: getBulkPrice(nextItem, nextItem.quantity),
               },
             ],
           };
@@ -109,9 +149,16 @@ export const useCartStore = create<CartStore>()(
                       ? item.stockQuantity
                       : 9999;
 
-                  return {
+                  const nextQty = Math.min(quantity, maxQty);
+
+                  const nextItem = {
                     ...item,
-                    quantity: Math.min(quantity, maxQty),
+                    quantity: nextQty,
+                  };
+
+                  return {
+                    ...nextItem,
+                    price: getBulkPrice(nextItem, nextQty),
                   };
                 }),
         })),
@@ -128,7 +175,7 @@ export const useCartStore = create<CartStore>()(
         ),
     }),
     {
-      name: "ajike-cart",
+      name: "TendrilsCart",
     }
   )
 );

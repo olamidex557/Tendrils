@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, X, AlertCircle } from "lucide-react";
+import { Minus, Plus, X, AlertCircle, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 
@@ -35,9 +35,21 @@ export default function CartTable() {
           {items.map((item) => {
             const stock =
               typeof item.stockQuantity === "number" ? item.stockQuantity : null;
+
             const outOfStock = stock !== null && stock <= 0;
             const maxReached = stock !== null && item.quantity >= stock;
             const overLimit = stock !== null && item.quantity > stock;
+
+            const basePrice = Number(item.basePrice ?? item.price);
+            const hasBulkPrice = Number(item.price) < basePrice;
+
+            const nextTier = [...(item.moqPricing ?? [])]
+              .filter(
+                (tier) =>
+                  tier.isActive &&
+                  Number(tier.minQuantity) > item.quantity
+              )
+              .sort((a, b) => a.minQuantity - b.minQuantity)[0];
 
             return (
               <div
@@ -84,7 +96,21 @@ export default function CartTable() {
                     ) : null}
 
                     {item.sku ? (
-                      <p className="mt-2 text-xs text-stone-400">SKU: {item.sku}</p>
+                      <p className="mt-2 text-xs text-stone-400">
+                        SKU: {item.sku}
+                      </p>
+                    ) : null}
+
+                    {hasBulkPrice ? (
+                      <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                        <BadgeCheck className="h-3.5 w-3.5" />
+                        Bulk price applied
+                      </p>
+                    ) : nextTier ? (
+                      <p className="mt-2 text-xs text-stone-500">
+                        Add {nextTier.minQuantity - item.quantity} more to get ₦
+                        {Number(nextTier.pricePerUnit).toLocaleString()} each
+                      </p>
                     ) : null}
 
                     {stock !== null ? (
@@ -110,8 +136,13 @@ export default function CartTable() {
                   </div>
                 </div>
 
-                <div className="flex items-center text-sm font-medium text-black">
-                  ₦{item.price.toLocaleString()}
+                <div className="flex flex-col justify-center text-sm font-medium text-black">
+                  <span>₦{Number(item.price).toLocaleString()}</span>
+                  {hasBulkPrice ? (
+                    <span className="text-xs text-stone-400 line-through">
+                      ₦{basePrice.toLocaleString()}
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="flex items-center">
@@ -148,7 +179,7 @@ export default function CartTable() {
                 </div>
 
                 <div className="flex items-center text-sm font-semibold text-black">
-                  ₦{(item.price * item.quantity).toLocaleString()}
+                  ₦{(Number(item.price) * item.quantity).toLocaleString()}
                 </div>
               </div>
             );

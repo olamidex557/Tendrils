@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { getAdminProductById } from "@/lib/db/queries/admin-products";
 import EditProductForm from "@/components/admin/edit-product-form";
+import { getAdminProductById } from "@/lib/db/queries/admin-products";
 
 type PageProps = {
   params: Promise<{
@@ -8,7 +8,7 @@ type PageProps = {
   }>;
 };
 
-export default async function AdminEditProductPage({ params }: PageProps) {
+export default async function EditProductPage({ params }: PageProps) {
   const { id } = await params;
   const product = await getAdminProductById(id);
 
