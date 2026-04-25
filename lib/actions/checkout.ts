@@ -12,10 +12,14 @@ type CheckoutInput = {
     id: string;
     productId?: string | null;
     variantId?: string | null;
+    sku?: string | null;
     name: string;
     slug: string;
     price: number;
     quantity: number;
+    image?: string | null;
+    category?: string | null;
+    selectedOptions?: Record<string, string> | null;
   }[];
 };
 
@@ -26,82 +30,62 @@ function generateOrderNumber() {
 function isUuid(value: string | null | undefined) {
   if (!value) return false;
 
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value.trim()
   );
 }
 
 export async function createCheckoutSession(input: CheckoutInput) {
   await assertStorefrontAvailableForCheckout();
 
-  if (!input.items.length) {
-    throw new Error("Your cart is empty.");
-  }
-
-  if (!input.fullName.trim()) {
-    throw new Error("Full name is required.");
-  }
-
-  if (!input.email.trim()) {
-    throw new Error("Email is required.");
-  }
-
-  if (!input.phone.trim()) {
-    throw new Error("Phone number is required.");
-  }
-
-  if (!input.address.trim()) {
-    throw new Error("Address is required.");
-  }
-
-  if (!process.env.PAYSTACK_SECRET_KEY) {
-    throw new Error("PAYSTACK_SECRET_KEY is missing.");
-  }
-
-  if (!process.env.NEXT_PUBLIC_SITE_URL) {
-    throw new Error("NEXT_PUBLIC_SITE_URL is missing.");
-  }
+  if (!input.items.length) throw new Error("Your cart is empty.");
+  if (!input.fullName.trim()) throw new Error("Full name is required.");
+  if (!input.email.trim()) throw new Error("Email is required.");
+  if (!input.phone.trim()) throw new Error("Phone number is required.");
+  if (!input.address.trim()) throw new Error("Address is required.");
+  if (!process.env.PAYSTACK_SECRET_KEY) throw new Error("PAYSTACK_SECRET_KEY is missing.");
+  if (!process.env.NEXT_PUBLIC_SITE_URL) throw new Error("NEXT_PUBLIC_SITE_URL is missing.");
 
   for (const item of input.items) {
     if (item.variantId && isUuid(item.variantId)) {
-      const { data: variant, error } = await supabaseAdmin
-        .from("product_variants")
-        .select("stock_quantity")
+      const { data: matrixRow, error: matrixError } = await supabaseAdmin
+        .from("product_inventory_matrix")
+        .select("stock_quantity, is_active")
         .eq("id", item.variantId)
         .maybeSingle();
 
-      if (error) {
-        throw new Error(error.message);
-      }
+      if (matrixError) throw new Error(matrixError.message);
 
-      const stock = Number(variant?.stock_quantity ?? 0);
+      if (matrixRow) {
+        const stock = Number(matrixRow.stock_quantity ?? 0);
 
-      if (item.quantity > stock) {
-        throw new Error(`${item.name} no longer has enough stock available.`);
+        if (!matrixRow.is_active || item.quantity > stock) {
+          throw new Error(`${item.name} no longer has enough stock available.`);
+        }
+
+        continue;
       }
-    } else {
-      const productId = isUuid(item.productId)
-        ? item.productId
-        : isUuid(item.id)
+    }
+
+    const productId = isUuid(item.productId)
+      ? item.productId
+      : isUuid(item.id)
         ? item.id
         : null;
 
-      if (productId) {
-        const { data: product, error } = await supabaseAdmin
-          .from("products")
-          .select("stock_quantity")
-          .eq("id", productId)
-          .maybeSingle();
+    if (productId) {
+      const { data: product, error } = await supabaseAdmin
+        .from("products")
+        .select("stock_quantity")
+        .eq("id", productId)
+        .maybeSingle();
 
-        if (error) {
-          throw new Error(error.message);
-        }
+      if (error) throw new Error(error.message);
 
-        const stock = Number(product?.stock_quantity ?? 0);
+      const stock = Number(product?.stock_quantity ?? 0);
 
-        if (item.quantity > stock) {
-          throw new Error(`${item.name} no longer has enough stock available.`);
-        }
+      if (item.quantity > stock) {
+        throw new Error(`${item.name} no longer has enough stock available.`);
       }
     }
   }
@@ -117,12 +101,18 @@ export async function createCheckoutSession(input: CheckoutInput) {
       .eq("email", input.email.trim())
       .maybeSingle();
 
-  if (existingCustomerError) {
-    throw new Error(existingCustomerError.message);
-  }
+  if (existingCustomerError) throw new Error(existingCustomerError.message);
 
   if (existingCustomer?.id) {
     customerId = existingCustomer.id;
+
+    await supabaseAdmin
+      .from("customers")
+      .update({
+        full_name: input.fullName.trim(),
+        phone: input.phone.trim(),
+      })
+      .eq("id", customerId);
   } else {
     const { data: newCustomer, error: newCustomerError } = await supabaseAdmin
       .from("customers")
@@ -135,9 +125,7 @@ export async function createCheckoutSession(input: CheckoutInput) {
       .select("id")
       .single();
 
-    if (newCustomerError) {
-      throw new Error(newCustomerError.message);
-    }
+    if (newCustomerError) throw new Error(newCustomerError.message);
 
     customerId = newCustomer.id;
   }
@@ -173,9 +161,7 @@ export async function createCheckoutSession(input: CheckoutInput) {
     .select("id")
     .single();
 
-  if (orderError) {
-    throw new Error(orderError.message);
-  }
+  if (orderError) throw new Error(orderError.message);
 
   const { error: itemsError } = await supabaseAdmin.from("order_items").insert(
     input.items.map((item) => ({
@@ -183,20 +169,22 @@ export async function createCheckoutSession(input: CheckoutInput) {
       product_id: isUuid(item.productId)
         ? item.productId
         : isUuid(item.id)
-        ? item.id
-        : null,
-      variant_id: isUuid(item.variantId) ? item.variantId : null,
+          ? item.id
+          : null,
+      variant_id: null,
+      matrix_id: isUuid(item.variantId) ? item.variantId : null,
       product_name: item.name,
       product_slug: item.slug,
       unit_price: Number(item.price),
       quantity: Number(item.quantity),
       line_total: Number(item.price) * Number(item.quantity),
+      image: item.image ?? null,
+      sku: item.sku ?? null,
+      selected_options: item.selectedOptions ?? null,
     }))
   );
 
-  if (itemsError) {
-    throw new Error(itemsError.message);
-  }
+  if (itemsError) throw new Error(itemsError.message);
 
   const paystackResponse = await fetch(
     "https://api.paystack.co/transaction/initialize",
@@ -214,6 +202,7 @@ export async function createCheckoutSession(input: CheckoutInput) {
           orderNumber
         )}`,
         metadata: {
+          order_id: order.id,
           order_number: orderNumber,
           customer_email: input.email.trim(),
         },

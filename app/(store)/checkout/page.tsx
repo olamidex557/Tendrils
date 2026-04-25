@@ -27,7 +27,7 @@ export default function CheckoutPage() {
     );
   }, [cartItems]);
 
-  const shippingFee: number = 0;
+  const shippingFee = 0;
   const total = subtotal + shippingFee;
 
   function handleChange(
@@ -57,10 +57,14 @@ export default function CheckoutPage() {
             id: item.id,
             productId: item.productId ?? item.id,
             variantId: item.variantId ?? null,
+            sku: item.sku ?? null,
             name: item.name,
             slug: item.slug,
             price: Number(item.price),
             quantity: Number(item.quantity),
+            image: item.image ?? null,
+            category: item.category ?? null,
+            selectedOptions: item.selectedOptions ?? null,
           })),
         });
 
@@ -70,9 +74,7 @@ export default function CheckoutPage() {
 
         window.location.href = result.checkoutUrl;
       } catch (error) {
-        setMessage(
-          error instanceof Error ? error.message : "Checkout failed."
-        );
+        setMessage(error instanceof Error ? error.message : "Checkout failed.");
       }
     });
   }
@@ -229,29 +231,16 @@ export default function CheckoutPage() {
                   </div>
 
                   <p className="text-sm font-semibold text-black">
-                    ₦
-                    {(
-                      Number(item.price) * Number(item.quantity)
-                    ).toLocaleString()}
+                    ₦{(Number(item.price) * Number(item.quantity)).toLocaleString()}
                   </p>
                 </div>
               ))}
             </div>
 
             <div className="mt-6 space-y-3 border-t border-stone-200 pt-6">
-              <SummaryRow
-                label="Subtotal"
-                value={`₦${subtotal.toLocaleString()}`}
-              />
-              <SummaryRow
-                label="Shipping"
-                value={shippingFee === 0 ? "Free" : `₦${shippingFee.toLocaleString()}`}
-              />
-              <SummaryRow
-                label="Total"
-                value={`₦${total.toLocaleString()}`}
-                bold
-              />
+              <SummaryRow label="Subtotal" value={`₦${subtotal.toLocaleString()}`} />
+              <SummaryRow label="Shipping" value="Free" />
+              <SummaryRow label="Total" value={`₦${total.toLocaleString()}`} bold />
             </div>
 
             <Button
