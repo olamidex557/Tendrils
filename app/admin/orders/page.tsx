@@ -73,7 +73,7 @@ export default async function AdminOrdersPage() {
                     </td>
 
                     <td className="px-6 py-5 text-sm font-medium text-black">
-                      {formatMoney(order.totalAmount, order.currency)}
+                      {formatMoney(order.total, "NGN")}
                     </td>
 
                     <td className="px-6 py-5">

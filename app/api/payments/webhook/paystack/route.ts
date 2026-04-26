@@ -1,6 +1,10 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import {
+  sendAdminNewOrderEmail,
+  sendCustomerOrderConfirmationEmail,
+} from "@/lib/email/order-emails";
 
 function isUuid(value: string | null | undefined) {
   if (!value || value === "null") return false;
@@ -43,7 +47,6 @@ async function deductStock(orderId: string) {
         .eq("id", item.matrix_id);
 
       if (updateError) throw new Error(updateError.message);
-
       continue;
     }
 
@@ -70,6 +73,51 @@ async function deductStock(orderId: string) {
       if (updateError) throw new Error(updateError.message);
     }
   }
+}
+
+async function sendOrderEmails(order: {
+  id: string;
+  order_number: string;
+  shipping_name: string | null;
+  shipping_email: string | null;
+  shipping_address: string | null;
+  total: number | null;
+}) {
+  if (!order.shipping_email) return;
+
+  const { data: orderItems, error } = await supabaseAdmin
+    .from("order_items")
+    .select("product_name, quantity, unit_price, line_total")
+    .eq("order_id", order.id);
+
+  if (error) {
+    console.error("ORDER EMAIL ITEMS ERROR:", error.message);
+    return;
+  }
+
+  const emailData = {
+    orderNumber: order.order_number,
+    customerName: order.shipping_name ?? "Customer",
+    customerEmail: order.shipping_email,
+    total: Number(order.total ?? 0),
+    address: order.shipping_address ?? "",
+    items: (orderItems ?? []).map((item) => ({
+      product_name: item.product_name,
+      quantity: Number(item.quantity ?? 0),
+      unit_price: Number(item.unit_price ?? 0),
+      line_total: Number(item.line_total ?? 0),
+    })),
+  };
+
+  await Promise.allSettled([
+    sendCustomerOrderConfirmationEmail(emailData),
+    sendAdminNewOrderEmail(emailData),
+  ]);
+
+  await supabaseAdmin
+    .from("orders")
+    .update({ confirmation_email_sent: true })
+    .eq("id", order.id);
 }
 
 export async function POST(req: Request) {
@@ -114,7 +162,17 @@ export async function POST(req: Request) {
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, payment_status, stock_deducted")
+      .select(`
+        id,
+        order_number,
+        payment_status,
+        stock_deducted,
+        confirmation_email_sent,
+        shipping_name,
+        shipping_email,
+        shipping_address,
+        total
+      `)
       .eq("order_number", reference)
       .maybeSingle();
 
@@ -125,6 +183,10 @@ export async function POST(req: Request) {
     }
 
     if (order.payment_status === "paid") {
+      if (!order.confirmation_email_sent) {
+        await sendOrderEmails(order);
+      }
+
       return NextResponse.json({ success: true, source: "already-paid" });
     }
 
@@ -158,6 +220,10 @@ export async function POST(req: Request) {
       .eq("id", order.id);
 
     if (updateOrderError) throw new Error(updateOrderError.message);
+
+    if (!order.confirmation_email_sent) {
+      await sendOrderEmails(order);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
