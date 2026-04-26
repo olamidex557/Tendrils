@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   CreditCard,
@@ -12,46 +13,57 @@ import {
   Clock3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getAdminOrderById } from "@/lib/db/queries/admin-order-details";
+import { markOrderAsFulfilled } from "@/lib/actions/admin-orders";
 
-const order = {
-  id: "AJK-1002",
-  customer: "Ada N.",
-  email: "shopper@example.com",
-  phone: "+234 801 234 5678",
-  paymentStatus: "Paid",
-  orderStatus: "Shipped",
-  placedAt: "2026-04-14 10:24 AM",
-  paymentMethod: "Paystack",
-  address: "14 Admiralty Way, Lekki Phase 1, Lagos, Nigeria",
-  notes: "Please call before delivery.",
-  subtotal: 89000,
-  shipping: 5000,
-  taxes: 0,
-  total: 94000,
+type PageProps = {
+  params: Promise<{ id: string }>;
 };
 
-const orderItems = [
-  {
-    id: "PRD-001",
-    name: "Wireless Earbuds",
-    variant: "Black",
-    quantity: 1,
-    price: 45000,
-    image:
-      "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "PRD-002",
-    name: "Classic T-Shirt",
-    variant: "White / M",
-    quantity: 2,
-    price: 22000,
-    image:
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&q=80",
-  },
-];
+function money(value: number, currency = "NGN") {
+  const symbol = currency === "NGN" ? "₦" : `${currency} `;
+  return `${symbol}${Number(value).toLocaleString()}`;
+}
 
-export default function AdminOrderDetailsPage() {
+function pill(status: string) {
+  if (status === "paid" || status === "fulfilled" || status === "delivered") {
+    return "bg-green-100 text-green-700";
+  }
+
+  if (
+    status === "pending" ||
+    status === "processing" ||
+    status === "unfulfilled"
+  ) {
+    return "bg-amber-100 text-amber-700";
+  }
+
+  if (status === "failed" || status === "cancelled") {
+    return "bg-red-100 text-red-700";
+  }
+
+  return "bg-stone-100 text-stone-700";
+}
+
+function formatStatus(status: string) {
+  return status.replaceAll("_", " ");
+}
+
+export default async function AdminOrderDetailsPage({ params }: PageProps) {
+  const { id } = await params;
+  const order = await getAdminOrderById(id);
+
+  if (!order) {
+    notFound();
+  }
+
+  const orderDetails = order;
+
+  async function fulfillAction() {
+    "use server";
+    await markOrderAsFulfilled(orderDetails.id);
+  }
+
   return (
     <section className="space-y-6">
       <div className="rounded-[1.5rem] border border-black/5 bg-white p-5 shadow-sm">
@@ -66,28 +78,43 @@ export default function AdminOrderDetailsPage() {
             </Link>
 
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-black">
-              Order {order.id}
+              Order {orderDetails.orderNumber}
             </h2>
 
             <p className="mt-2 text-sm text-stone-600">
-              Placed on {order.placedAt}
+              Placed on {new Date(orderDetails.createdAt).toLocaleString()}
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="rounded-full px-5">
-              Mark as Shipped
+          <form action={fulfillAction}>
+            <Button
+              type="submit"
+              disabled={orderDetails.fulfillmentStatus === "fulfilled"}
+              className="rounded-full bg-black px-5 text-white hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <PackageCheck className="mr-2 h-4 w-4" />
+              {orderDetails.fulfillmentStatus === "fulfilled"
+                ? "Already Fulfilled"
+                : "Mark as Fulfilled"}
             </Button>
-            <Button className="rounded-full bg-black px-5 text-white hover:bg-black/90">
-              Mark as Delivered
-            </Button>
-          </div>
+          </form>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <StatusPill status={order.orderStatus} kind="order" />
-          <StatusPill status={order.paymentStatus} kind="payment" />
-          <MetaPill label={`Payment: ${order.paymentMethod}`} />
+          <StatusPill
+            label={`Order: ${formatStatus(orderDetails.status)}`}
+            status={orderDetails.status}
+          />
+          <StatusPill
+            label={`Payment: ${formatStatus(orderDetails.paymentStatus)}`}
+            status={orderDetails.paymentStatus}
+          />
+          <StatusPill
+            label={`Fulfillment: ${formatStatus(
+              orderDetails.fulfillmentStatus
+            )}`}
+            status={orderDetails.fulfillmentStatus}
+          />
         </div>
       </div>
 
@@ -99,47 +126,31 @@ export default function AdminOrderDetailsPage() {
             subtitle="Products included in this order."
           >
             <div className="space-y-4">
-              {orderItems.map((item) => (
+              {orderDetails.items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex flex-col gap-4 rounded-[1.25rem] border border-stone-200 p-4 md:flex-row 
-md:items-center md:justify-between"
+                  className="flex flex-col gap-4 rounded-[1.25rem] border border-stone-200 p-4 md:flex-row md:items-center md:justify-between"
                 >
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="h-16 w-16 rounded-2xl object-cover bg-stone-100"
-                    />
-
-                    <div>
-                      <p className="font-semibold text-black">{item.name}</p>
-                      <p className="mt-1 text-sm text-stone-500">
-                        Variant: {item.variant}
-                      </p>
-                      <p className="mt-1 text-xs text-stone-400">{item.id}</p>
-                    </div>
+                  <div>
+                    <p className="font-semibold text-black">
+                      {item.productName}
+                    </p>
+                    <p className="mt-1 text-xs text-stone-400">
+                      {item.productSlug ?? item.id}
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-3 gap-6 text-sm md:min-w-[280px]">
-                    <div>
-                      <p className="text-stone-500">Qty</p>
-                      <p className="mt-1 font-medium text-black">{item.quantity}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-stone-500">Price</p>
-                      <p className="mt-1 font-medium text-black">
-                        ₦{item.price.toLocaleString()}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-stone-500">Subtotal</p>
-                      <p className="mt-1 font-semibold text-black">
-                        ₦{(item.quantity * item.price).toLocaleString()}
-                      </p>
-                    </div>
+                    <MiniStat label="Qty" value={String(item.quantity)} />
+                    <MiniStat
+                      label="Price"
+                      value={money(item.unitPrice, orderDetails.currency)}
+                    />
+                    <MiniStat
+                      label="Subtotal"
+                      value={money(item.lineTotal, orderDetails.currency)}
+                      strong
+                    />
                   </div>
                 </div>
               ))}
@@ -154,27 +165,26 @@ md:items-center md:justify-between"
             <div className="space-y-5">
               <TimelineRow
                 title="Order placed"
-                description="Customer successfully placed the order."
-                active={true}
-                last={false}
+                description="Customer placed the order."
+                active
               />
               <TimelineRow
                 title="Payment confirmed"
-                description="Payment was successfully received."
-                active={true}
-                last={false}
+                description="Payment has been received."
+                active={orderDetails.paymentStatus === "paid"}
               />
               <TimelineRow
-                title="Order shipped"
-                description="Package has left the fulfillment point."
-                active={true}
-                last={false}
+                title="Processing"
+                description="Order is being prepared."
+                active={["processing", "fulfilled"].includes(
+                  orderDetails.fulfillmentStatus
+                )}
               />
               <TimelineRow
-                title="Delivered"
-                description="Waiting for final delivery confirmation."
-                active={false}
-                last={true}
+                title="Fulfilled"
+                description="Order has been delivered or completed."
+                active={orderDetails.fulfillmentStatus === "fulfilled"}
+                last
               />
             </div>
           </CardShell>
@@ -186,36 +196,33 @@ md:items-center md:justify-between"
             title="Customer Details"
             subtitle="Contact and customer identity."
           >
-            <InfoRow
-              icon={<User className="h-4 w-4 text-stone-500" />}
-              label="Customer"
-              value={order.customer}
-            />
-            <InfoRow
-              icon={<Mail className="h-4 w-4 text-stone-500" />}
-              label="Email"
-              value={order.email}
-            />
-            <InfoRow
-              icon={<Phone className="h-4 w-4 text-stone-500" />}
-              label="Phone"
-              value={order.phone}
-            />
+            <div className="space-y-3">
+              <InfoRow
+                icon={<User className="h-4 w-4 text-stone-500" />}
+                label="Customer"
+                value={orderDetails.customerName ?? "Guest Customer"}
+              />
+              <InfoRow
+                icon={<Mail className="h-4 w-4 text-stone-500" />}
+                label="Email"
+                value={orderDetails.customerEmail ?? "No email"}
+              />
+              <InfoRow
+                icon={<Phone className="h-4 w-4 text-stone-500" />}
+                label="Phone"
+                value={orderDetails.customerPhone ?? "No phone"}
+              />
+            </div>
           </CardShell>
 
           <CardShell
             icon={<MapPin className="h-5 w-5 text-black" />}
             title="Shipping Address"
-            subtitle="Delivery destination and notes."
+            subtitle="Delivery destination."
           >
-            <p className="text-sm leading-7 text-stone-600">{order.address}</p>
-
-            <div className="mt-4 rounded-2xl bg-stone-50 p-4">
-              <p className="text-sm font-medium text-black">Delivery Notes</p>
-              <p className="mt-2 text-sm text-stone-600">
-                {order.notes || "No delivery notes added."}
-              </p>
-            </div>
+            <p className="text-sm leading-7 text-stone-600">
+              {orderDetails.shippingAddress ?? "No address provided."}
+            </p>
           </CardShell>
 
           <CardShell
@@ -223,45 +230,81 @@ md:items-center md:justify-between"
             title="Payment Summary"
             subtitle="Breakdown of charges and totals."
           >
-            <SummaryLine label="Subtotal" value={`₦${order.subtotal.toLocaleString()}`} />
-            <SummaryLine label="Shipping" value={`₦${order.shipping.toLocaleString()}`} />
-            <SummaryLine label="Taxes" value={`₦${order.taxes.toLocaleString()}`} />
+            <SummaryLine
+              label="Subtotal"
+              value={money(orderDetails.subtotal, orderDetails.currency)}
+            />
+            <SummaryLine
+              label="Shipping"
+              value={money(orderDetails.shippingFee, orderDetails.currency)}
+            />
+            <SummaryLine
+              label="Discount"
+              value={money(orderDetails.discountAmount, orderDetails.currency)}
+            />
             <div className="mt-4 border-t border-stone-200 pt-4">
               <SummaryLine
                 label="Total"
-                value={`₦${order.total.toLocaleString()}`}
+                value={money(orderDetails.total, orderDetails.currency)}
                 strong
               />
             </div>
           </CardShell>
 
           <CardShell
-            icon={<PackageCheck className="h-5 w-5 text-black" />}
-            title="Admin Actions"
-            subtitle="Quick controls for this order."
-          >
-            <div className="grid gap-3">
-              <ActionButton label="Update Order Status" />
-              <ActionButton label="Update Payment Status" />
-              <ActionButton label="Send Customer Update" />
-              <ActionButton label="Print Invoice" />
-            </div>
-          </CardShell>
-
-          <CardShell
             icon={<Clock3 className="h-5 w-5 text-black" />}
             title="Activity"
-            subtitle="Recent admin activity timeline."
+            subtitle="Current order state."
           >
             <div className="space-y-3 text-sm text-stone-600">
-              <p>• Order created and payment marked as paid.</p>
-              <p>• Shipment label prepared.</p>
-              <p>• Order status updated to shipped.</p>
+              <p>• Order status: {formatStatus(orderDetails.status)}</p>
+              <p>
+                • Payment status: {formatStatus(orderDetails.paymentStatus)}
+              </p>
+              <p>
+                • Fulfillment status:{" "}
+                {formatStatus(orderDetails.fulfillmentStatus)}
+              </p>
             </div>
           </CardShell>
         </div>
       </div>
     </section>
+  );
+}
+
+function StatusPill({ label, status }: { label: string; status: string }) {
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${pill(
+        status
+      )}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-stone-500">{label}</p>
+      <p
+        className={`mt-1 ${
+          strong ? "font-semibold" : "font-medium"
+        } text-black`}
+      >
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -295,43 +338,6 @@ function CardShell({
   );
 }
 
-function StatusPill({
-  status,
-  kind,
-}: {
-  status: string;
-  kind: "order" | "payment";
-}) {
-  const styles =
-    kind === "payment"
-      ? status === "Paid"
-        ? "bg-green-100 text-green-700"
-        : status === "Pending"
-        ? "bg-amber-100 text-amber-700"
-        : "bg-red-100 text-red-700"
-      : status === "Delivered"
-      ? "bg-green-100 text-green-700"
-      : status === "Shipped"
-      ? "bg-blue-100 text-blue-700"
-      : status === "Processing"
-      ? "bg-stone-100 text-stone-700"
-      : "bg-amber-100 text-amber-700";
-
-  return (
-    <span className={`rounded-full px-3 py-1 text-xs font-medium ${styles}`}>
-      {status}
-    </span>
-  );
-}
-
-function MetaPill({ label }: { label: string }) {
-  return (
-    <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
-      {label}
-    </span>
-  );
-}
-
 function InfoRow({
   icon,
   label,
@@ -345,7 +351,9 @@ function InfoRow({
     <div className="flex items-start gap-3 rounded-2xl bg-stone-50 p-4">
       <div className="mt-0.5">{icon}</div>
       <div>
-        <p className="text-xs uppercase tracking-wide text-stone-500">{label}</p>
+        <p className="text-xs uppercase tracking-wide text-stone-500">
+          {label}
+        </p>
         <p className="mt-1 text-sm font-medium text-black">{value}</p>
       </div>
     </div>
@@ -363,25 +371,21 @@ function SummaryLine({
 }) {
   return (
     <div className="flex items-center justify-between py-2">
-      <span className={strong ? "text-base font-semibold text-black" : "text-sm text-stone-600"}>
+      <span
+        className={
+          strong ? "text-base font-semibold text-black" : "text-sm text-stone-600"
+        }
+      >
         {label}
       </span>
-      <span className={strong ? "text-base font-bold text-black" : "text-sm font-medium text-black"}>
+      <span
+        className={
+          strong ? "text-base font-bold text-black" : "text-sm font-medium text-black"
+        }
+      >
         {value}
       </span>
     </div>
-  );
-}
-
-function ActionButton({ label }: { label: string }) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      className="justify-start rounded-2xl px-4 py-6 text-left text-sm"
-    >
-      {label}
-    </Button>
   );
 }
 
@@ -389,12 +393,12 @@ function TimelineRow({
   title,
   description,
   active,
-  last,
+  last = false,
 }: {
   title: string;
   description: string;
   active: boolean;
-  last: boolean;
+  last?: boolean;
 }) {
   return (
     <div className="flex gap-4">

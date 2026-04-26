@@ -1,38 +1,38 @@
 import { sendEmail } from "@/lib/email/send-email";
 
 type OrderEmailItem = {
-    product_name: string;
-    quantity: number;
-    unit_price: number;
-    line_total: number;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
 };
 
 type OrderEmailData = {
-    orderNumber: string;
-    customerName: string;
-    customerEmail: string;
-    total: number;
-    address: string;
-    items: OrderEmailItem[];
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  total: number;
+  address: string;
+  items: OrderEmailItem[];
 };
 
 function money(value: number) {
-    return `₦${Number(value).toLocaleString()}`;
+  return `₦${Number(value).toLocaleString()}`;
 }
 
 function escapeHtml(value: string) {
-    return value
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function orderItemsRows(items: OrderEmailItem[]) {
-    return items
-        .map(
-            (item) => `
+  return items
+    .map(
+      (item) => `
         <tr>
           <td style="padding:14px 12px;border-bottom:1px solid #eeeeee;color:#111111;">
             ${escapeHtml(item.product_name)}
@@ -48,12 +48,12 @@ function orderItemsRows(items: OrderEmailItem[]) {
           </td>
         </tr>
       `
-        )
-        .join("");
+    )
+    .join("");
 }
 
 function baseEmailLayout(content: string) {
-    return `
+  return `
     <div style="margin:0;padding:0;background:#f6f4ef;font-family:Arial,Helvetica,sans-serif;color:#111111;">
       <div style="max-width:680px;margin:0 auto;padding:28px 16px;">
         <div style="background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #eeeeee;">
@@ -78,10 +78,10 @@ function baseEmailLayout(content: string) {
 }
 
 export async function sendCustomerOrderConfirmationEmail(order: OrderEmailData) {
-    return sendEmail({
-        to: order.customerEmail,
-        subject: `Order Confirmed — ${order.orderNumber}`,
-        html: baseEmailLayout(`
+  return sendEmail({
+    to: order.customerEmail,
+    subject: `Order Confirmed — ${order.orderNumber}`,
+    html: baseEmailLayout(`
       <h2 style="margin:0;font-size:24px;letter-spacing:-0.03em;color:#111111;">
         Order confirmed 🎉
       </h2>
@@ -125,56 +125,21 @@ export async function sendCustomerOrderConfirmationEmail(order: OrderEmailData) 
         We’ll notify you once your order is fulfilled.
       </p>
     `),
-    });
-}
-
-export async function sendOrderDeliveredEmail(order: {
-    orderNumber: string;
-    customerName: string;
-    customerEmail: string;
-}) {
-    return sendEmail({
-        to: order.customerEmail,
-        subject: `Your Order Has Been Delivered — ${order.orderNumber}`,
-        html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin:auto; padding:20px;">
-        <h2>Tendrils</h2>
-
-        <h3 style="margin-top:20px;">🎉 Order Delivered</h3>
-
-        <p>Hello ${order.customerName},</p>
-
-        <p>
-          Your order <strong>${order.orderNumber}</strong> has been successfully delivered.
-        </p>
-
-        <p>
-          We hope you love your purchase. Thank you for shopping with us!
-        </p>
-
-        <div style="margin-top:30px;">
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL}"
-             style="background:#111;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;">
-            Continue Shopping
-          </a>
-        </div>
-      </div>
-    `,
-    });
+  });
 }
 
 export async function sendAdminNewOrderEmail(order: OrderEmailData) {
-    const adminEmail = process.env.ADMIN_EMAIL;
+  const adminEmail = process.env.ADMIN_EMAIL;
 
-    if (!adminEmail) {
-        console.warn("ADMIN_EMAIL is missing. Admin email skipped.");
-        return null;
-    }
+  if (!adminEmail) {
+    console.warn("ADMIN_EMAIL is missing. Admin email skipped.");
+    return null;
+  }
 
-    return sendEmail({
-        to: adminEmail,
-        subject: `New Order Received — ${order.orderNumber}`,
-        html: baseEmailLayout(`
+  return sendEmail({
+    to: adminEmail,
+    subject: `New Order Received — ${order.orderNumber}`,
+    html: baseEmailLayout(`
       <h2 style="margin:0;font-size:24px;letter-spacing:-0.03em;color:#111111;">
         New order received
       </h2>
@@ -216,5 +181,38 @@ export async function sendAdminNewOrderEmail(order: OrderEmailData) {
         </p>
       </div>
     `),
-    });
+  });
+}
+
+export async function sendOrderDeliveredEmail(order: {
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+}) {
+  return sendEmail({
+    to: order.customerEmail,
+    subject: `Your Order Has Been Delivered — ${order.orderNumber}`,
+    html: baseEmailLayout(`
+      <h2 style="margin:0;font-size:24px;letter-spacing:-0.03em;color:#111111;">
+        Order delivered 🎉
+      </h2>
+
+      <p style="margin:14px 0 0;font-size:15px;line-height:26px;color:#555555;">
+        Hi ${escapeHtml(order.customerName)}, your order <strong>${escapeHtml(
+      order.orderNumber
+    )}</strong> has been marked as delivered.
+      </p>
+
+      <p style="margin:18px 0 0;font-size:14px;line-height:24px;color:#555555;">
+        Thank you for shopping with Tendrils. We hope you love your purchase.
+      </p>
+
+      <div style="margin-top:26px;">
+        <a href="${process.env.NEXT_PUBLIC_SITE_URL ?? "#"}"
+          style="display:inline-block;background:#111111;color:#ffffff;padding:12px 20px;border-radius:999px;text-decoration:none;font-size:14px;font-weight:700;">
+          Continue Shopping
+        </a>
+      </div>
+    `),
+  });
 }

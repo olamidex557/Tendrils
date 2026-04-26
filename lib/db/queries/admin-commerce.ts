@@ -14,6 +14,17 @@ export type AdminOrderListItem = {
   createdAt: string;
 };
 
+export type AdminCustomerListItem = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  status: string;
+  totalOrders: number;
+  totalSpent: number;
+  createdAt: string;
+};
+
 export const getAdminOrders = cache(async (): Promise<AdminOrderListItem[]> => {
   const { data, error } = await supabaseAdmin
     .from("orders")
@@ -52,3 +63,50 @@ export const getAdminOrders = cache(async (): Promise<AdminOrderListItem[]> => {
     createdAt: order.created_at,
   }));
 });
+
+export const getAdminCustomers = cache(
+  async (): Promise<AdminCustomerListItem[]> => {
+    const { data, error } = await supabaseAdmin
+      .from("customers")
+      .select(`
+        id,
+        full_name,
+        email,
+        phone,
+        status,
+        created_at,
+        orders (
+          id,
+          total,
+          total_amount
+        )
+      `)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to load admin customers: ${error.message}`);
+    }
+
+    return (data ?? []).map((customer: any) => {
+      const orders = customer.orders ?? [];
+
+      return {
+        id: customer.id,
+        fullName: customer.full_name ?? "Unnamed Customer",
+        email: customer.email ?? "No email",
+        phone: customer.phone ?? null,
+        status: customer.status ?? "active",
+        totalOrders: orders.length,
+        totalSpent: orders.reduce((sum: number, order: any) => {
+          const total =
+            order.total !== null && order.total !== undefined
+              ? Number(order.total)
+              : Number(order.total_amount ?? 0);
+
+          return sum + total;
+        }, 0),
+        createdAt: customer.created_at,
+      };
+    });
+  }
+);
