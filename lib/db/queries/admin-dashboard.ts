@@ -44,6 +44,142 @@ function fallbackImage() {
   return "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80";
 }
 
+export async function getAdminDashboardStats() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [
+    productsResult,
+    visibleProductsResult,
+    categoriesResult,
+    ordersResult,
+    todayOrdersResult,
+    paidOrdersResult,
+    pendingOrdersResult,
+    completedOrdersResult,
+    recentOrdersResult,
+  ] = await Promise.all([
+    supabaseAdmin.from("products").select("id", { count: "exact", head: true }),
+
+    supabaseAdmin
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("is_visible", true),
+
+    supabaseAdmin
+      .from("categories")
+      .select("id", { count: "exact", head: true })
+      .eq("is_visible", true),
+
+    supabaseAdmin
+      .from("orders")
+      .select("id, total, total_amount, payment_status, created_at"),
+
+    supabaseAdmin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", today.toISOString()),
+
+    supabaseAdmin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("payment_status", "paid"),
+
+    supabaseAdmin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("payment_status", "pending"),
+
+    supabaseAdmin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("fulfillment_status", "fulfilled"),
+
+    supabaseAdmin
+      .from("orders")
+      .select(`
+        id,
+        order_number,
+        shipping_name,
+        total,
+        total_amount,
+        payment_status,
+        created_at
+      `)
+      .order("created_at", { ascending: false })
+      .limit(5),
+  ]);
+
+  const results = [
+    productsResult,
+    visibleProductsResult,
+    categoriesResult,
+    ordersResult,
+    todayOrdersResult,
+    paidOrdersResult,
+    pendingOrdersResult,
+    completedOrdersResult,
+    recentOrdersResult,
+  ];
+
+  for (const result of results) {
+    if (result.error) throw new Error(result.error.message);
+  }
+
+  const orders = ordersResult.data ?? [];
+
+  const totalRevenue = orders
+    .filter((order: any) => order.payment_status === "paid")
+    .reduce((sum: number, order: any) => {
+      const total =
+        order.total !== null && order.total !== undefined
+          ? Number(order.total)
+          : Number(order.total_amount ?? 0);
+
+      return sum + total;
+    }, 0);
+
+  const todayRevenue = orders
+    .filter((order: any) => {
+      return (
+        order.payment_status === "paid" &&
+        new Date(order.created_at).getTime() >= today.getTime()
+      );
+    })
+    .reduce((sum: number, order: any) => {
+      const total =
+        order.total !== null && order.total !== undefined
+          ? Number(order.total)
+          : Number(order.total_amount ?? 0);
+
+      return sum + total;
+    }, 0);
+
+  return {
+    totalProducts: productsResult.count ?? 0,
+    visibleProducts: visibleProductsResult.count ?? 0,
+    activeCategories: categoriesResult.count ?? 0,
+    totalOrders: orders.length,
+    todayOrders: todayOrdersResult.count ?? 0,
+    paidOrders: paidOrdersResult.count ?? 0,
+    pendingOrders: pendingOrdersResult.count ?? 0,
+    completedOrders: completedOrdersResult.count ?? 0,
+    totalRevenue,
+    todayRevenue,
+    lowStockProducts: 0,
+    recentOrders: (recentOrdersResult.data ?? []).map((order: any) => ({
+      id: order.id,
+      orderNumber: order.order_number,
+      customerName: order.shipping_name ?? null,
+      total:
+        order.total !== null && order.total !== undefined
+          ? Number(order.total)
+          : Number(order.total_amount ?? 0),
+      paymentStatus: order.payment_status ?? "pending",
+    })),
+  };
+}
+
 export const getAdminProducts = cache(async (): Promise<AdminProductListItem[]> => {
   const { data, error } = await supabaseAdmin
     .from("products")

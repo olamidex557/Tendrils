@@ -3,151 +3,119 @@ import { MapPin, Phone, Mail } from "lucide-react";
 import { FaFacebookF, FaTwitter, FaInstagram } from "react-icons/fa";
 
 export default function Footer() {
-    return (
-        <footer className="mt-16 bg-[#8d86f7] px-4 py-14 md:px-6">
-            <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
-                <div className="px-8 py-10 md:px-12 md:py-12">
-                    <div className="grid gap-10 md:grid-cols-2 xl:grid-cols-4">
-                        <div>
-                            <div className="text-2xl font-bold tracking-tight text-black">
-                                TEMPLATE
-                            </div>
+  return (
+    <footer className="mt-10 bg-[#8d86f7] px-3 py-6 md:px-6 md:py-10">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-[1.5rem] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
+        <div className="px-5 py-6 md:px-12 md:py-10">
+          <div className="grid gap-5 md:grid-cols-4">
+            <div className="md:col-span-1">
+              <div className="text-lg font-bold tracking-tight text-black">
+                TEMPLATE
+              </div>
 
-                            <p className="mt-5 max-w-xs text-sm leading-7 text-stone-600">
-                                Discover quality products across multiple categories with a
-                                modern shopping experience built for convenience, trust, and
-                                everyday value.
-                            </p>
+              <p className="mt-2 max-w-sm text-xs leading-5 text-stone-600">
+                Quality products across multiple categories, built for simple and trusted shopping.
+              </p>
 
-                            <div className="mt-6 flex items-center gap-4 text-stone-500">
-                                <a href="#" aria-label="Facebook" className="transition hover:text-black">
-                                    <FaFacebookF className="h-4 w-4" />
-                                </a>
-
-                                <a href="#" aria-label="Twitter" className="transition hover:text-black">
-                                    <FaTwitter className="h-4 w-4" />
-                                </a>
-
-                                <a href="#" aria-label="Instagram" className="transition hover:text-black">
-                                    <FaInstagram className="h-4 w-4" />
-                                </a>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 className="text-sm font-semibold uppercase tracking-wide text-black">
-                                Quick Links
-                            </h3>
-
-                            <ul className="mt-5 space-y-3 text-sm text-stone-600">
-                                <li>
-                                    <Link href="/about" className="transition hover:text-black">
-                                        About Us
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link href="/products" className="transition hover:text-black">
-                                        Shop
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link href="/categories/all" className="transition hover:text-black">
-                                        Categories
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link href="/order-tracking" className="transition hover:text-black">
-                                        Track Order
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link href="/contact" className="transition hover:text-black">
-                                        Contact
-                                    </Link>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <h3 className="text-sm font-semibold uppercase tracking-wide text-black">
-                                Our Categories
-                            </h3>
-
-                            <ul className="mt-5 space-y-3 text-sm text-stone-600">
-                                <li>
-                                    <Link href="/categories/electronics" className="transition hover:text-black">
-                                        Electronics
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link href="/categories/fashion" className="transition hover:text-black">
-                                        Fashion
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link href="/categories/grocery" className="transition hover:text-black">
-                                        Grocery
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link href="/categories/home-essentials" className="transition hover:text-black">
-                                        Home Essentials
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link href="/categories/sports" className="transition hover:text-black">
-                                        Sports
-                                    </Link>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <h3 className="text-sm font-semibold uppercase tracking-wide text-black">
-                                Contact Us
-                            </h3>
-
-                            <div className="mt-5 space-y-4 text-sm text-stone-600">
-                                <div className="flex items-start gap-3">
-                                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#8d86f7]" />
-                                    <p>Lorem ipsum vitae voluptatum alias eaque id eos delen</p>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <Mail className="h-4 w-4 shrink-0 text-[#8d86f7]" />
-                                    <p>info@TEMPLATE.com</p>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <Phone className="h-4 w-4 shrink-0 text-[#8d86f7]" />
-                                    <p>+234 705 224 3768</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-10 border-t border-stone-200 pt-5">
-                        <div className="flex flex-col gap-4 text-xs text-stone-500 md:flex-row md:items-center md:justify-between">
-                            <p>© 2026 Designed by OLABYTE TECH. Your Premium Web Solutions.</p>
-
-                            <div className="flex flex-wrap gap-4">
-                                <Link href="/terms" className="transition hover:text-black">
-                                    Terms of Service
-                                </Link>
-                                <Link href="/privacy" className="transition hover:text-black">
-                                    Privacy Policy
-                                </Link>
-                                <Link href="/cookies" className="transition hover:text-black">
-                                    Cookie Policy
-                                </Link>
-                                <Link href="/sitemap" className="transition hover:text-black">
-                                    Sitemap
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+              <div className="mt-3 flex items-center gap-3 text-stone-500">
+                <a href="#" aria-label="Facebook">
+                  <FaFacebookF className="h-3.5 w-3.5" />
+                </a>
+                <a href="#" aria-label="Twitter">
+                  <FaTwitter className="h-3.5 w-3.5" />
+                </a>
+                <a href="#" aria-label="Instagram">
+                  <FaInstagram className="h-3.5 w-3.5" />
+                </a>
+              </div>
             </div>
-        </footer>
-    );
+
+            <FooterGroup
+              title="Links"
+              links={[
+                ["About", "/about"],
+                ["Shop", "/products"],
+                ["Categories", "/categories/all"],
+                ["Track", "/order-tracking"],
+                ["Contact", "/contact"],
+              ]}
+            />
+
+            <FooterGroup
+              title="Categories"
+              links={[
+                ["Electronics", "/categories/electronics"],
+                ["Fashion", "/categories/fashion"],
+                ["Grocery", "/categories/grocery"],
+                ["Home", "/categories/home-essentials"],
+                ["Sports", "/categories/sports"],
+              ]}
+            />
+
+            <div>
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-black">
+                Contact
+              </h3>
+
+              <div className="mt-2 space-y-2 text-xs leading-5 text-stone-600">
+                <p className="flex gap-2">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8d86f7]" />
+                  <span className="line-clamp-1">
+                    Lorem ipsum vitae voluptatum alias eaque id eos delen
+                  </span>
+                </p>
+
+                <p className="flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5 shrink-0 text-[#8d86f7]" />
+                  info@TEMPLATE.com
+                </p>
+
+                <p className="flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-[#8d86f7]" />
+                  +234 705 224 3768
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 border-t border-stone-200 pt-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-stone-500">
+              <p>© 2026 OLABYTE TECH</p>
+
+              <div className="flex flex-wrap gap-3">
+                <Link href="/terms">Terms</Link>
+                <Link href="/privacy">Privacy</Link>
+                <Link href="/cookies">Cookies</Link>
+                <Link href="/sitemap">Sitemap</Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
 }
+
+function FooterGroup({
+  title,
+  links,
+}: {
+  title: string;
+  links: [string, string][];
+}) {
+  return (
+    <div>
+      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-black">
+        {title}
+      </h3>
+
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-600">
+        {links.map(([label, href]) => (
+          <Link key={href} href={href} className="transition hover:text-black">
+            {label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+} 

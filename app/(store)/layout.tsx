@@ -35,7 +35,6 @@ export default async function StoreLayout({
   return (
     <>
       <Navbar />
-      <StorefrontCategoryStrip />
       {children}
       <Footer />
     </>

@@ -1,45 +1,62 @@
+import Link from "next/link";
 import {
   Package,
   ShoppingCart,
   CreditCard,
   TrendingUp,
 } from "lucide-react";
+import { getAdminDashboardStats } from "@/lib/db/queries/admin-dashboard";
 
-const stats = [
-  {
-    title: "Total Products",
-    value: "128",
-    change: "+12 this week",
-    icon: Package,
-  },
-  {
-    title: "Orders",
-    value: "342",
-    change: "+18 today",
-    icon: ShoppingCart,
-  },
-  {
-    title: "Revenue",
-    value: "₦2,450,000",
-    change: "+8.2%",
-    icon: CreditCard,
-  },
-  {
-    title: "Growth",
-    value: "24%",
-    change: "This month",
-    icon: TrendingUp,
-  },
-];
+function money(value: number) {
+  return `₦${Number(value).toLocaleString()}`;
+}
 
-const recentOrders = [
-  { id: "AJK-1001", customer: "Olamide", amount: "₦145,000", status: "Paid" },
-  { id: "AJK-1002", customer: "Ada", amount: "₦89,000", status: "Pending" },
-  { id: "AJK-1003", customer: "David", amount: "₦42,000", status: "Delivered" },
-  { id: "AJK-1004", customer: "Sarah", amount: "₦199,000", status: "Paid" },
-];
+function pill(status: string) {
+  if (status === "paid" || status === "completed" || status === "fulfilled") {
+    return "bg-green-100 text-green-700";
+  }
 
-export default function AdminDashboardPage() {
+  if (status === "pending" || status === "processing") {
+    return "bg-amber-100 text-amber-700";
+  }
+
+  if (status === "failed" || status === "cancelled") {
+    return "bg-red-100 text-red-700";
+  }
+
+  return "bg-stone-100 text-stone-700";
+}
+
+export default async function AdminDashboardPage() {
+  const dashboard = await getAdminDashboardStats();
+
+  const stats = [
+    {
+      title: "Total Products",
+      value: String(dashboard.totalProducts),
+      change: `${dashboard.visibleProducts} visible`,
+      icon: Package,
+    },
+    {
+      title: "Orders",
+      value: String(dashboard.totalOrders),
+      change: `${dashboard.todayOrders} today`,
+      icon: ShoppingCart,
+    },
+    {
+      title: "Revenue",
+      value: money(dashboard.totalRevenue),
+      change: `${money(dashboard.todayRevenue)} today`,
+      icon: CreditCard,
+    },
+    {
+      title: "Growth",
+      value: `${dashboard.completedOrders}`,
+      change: "Completed orders",
+      icon: TrendingUp,
+    },
+  ];
+
   return (
     <section className="space-y-6">
       <div>
@@ -79,9 +96,12 @@ export default function AdminDashboardPage() {
         <div className="rounded-[1.5rem] border border-black/5 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-semibold text-black">Recent Orders</h3>
-            <button className="text-sm font-medium text-stone-500 transition hover:text-black">
+            <Link
+              href="/admin/orders"
+              className="text-sm font-medium text-stone-500 transition hover:text-black"
+            >
               View all
-            </button>
+            </Link>
           </div>
 
           <div className="mt-6 overflow-x-auto">
@@ -94,19 +114,46 @@ export default function AdminDashboardPage() {
                   <th className="pb-3 font-medium">Status</th>
                 </tr>
               </thead>
+
               <tbody>
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="border-b border-stone-100 text-sm">
-                    <td className="py-4 font-medium text-black">{order.id}</td>
-                    <td className="py-4 text-stone-600">{order.customer}</td>
-                    <td className="py-4 text-stone-600">{order.amount}</td>
-                    <td className="py-4">
-                      <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
-                        {order.status}
-                      </span>
+                {dashboard.recentOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-sm text-stone-500">
+                      No recent orders yet.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  dashboard.recentOrders.map((order) => (
+                    <tr
+                      key={order.id}
+                      className="border-b border-stone-100 text-sm"
+                    >
+                      <td className="py-4 font-medium text-black">
+                        <Link
+                          href={`/admin/orders/${order.id}`}
+                          className="underline-offset-4 hover:underline"
+                        >
+                          {order.orderNumber}
+                        </Link>
+                      </td>
+                      <td className="py-4 text-stone-600">
+                        {order.customerName ?? "Guest Customer"}
+                      </td>
+                      <td className="py-4 text-stone-600">
+                        {money(order.total)}
+                      </td>
+                      <td className="py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${pill(
+                            order.paymentStatus
+                          )}`}
+                        >
+                          {order.paymentStatus}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -116,20 +163,32 @@ export default function AdminDashboardPage() {
           <div className="rounded-[1.5rem] border border-black/5 bg-white p-6 shadow-sm">
             <h3 className="text-xl font-semibold text-black">Store Health</h3>
             <div className="mt-5 space-y-4">
-              <HealthRow label="Inventory status" value="Stable" />
-              <HealthRow label="Pending orders" value="12" />
-              <HealthRow label="Payment success rate" value="97%" />
-              <HealthRow label="Active categories" value="8" />
+              <HealthRow
+                label="Inventory status"
+                value={dashboard.lowStockProducts > 0 ? "Needs attention" : "Stable"}
+              />
+              <HealthRow
+                label="Pending orders"
+                value={String(dashboard.pendingOrders)}
+              />
+              <HealthRow
+                label="Paid orders"
+                value={String(dashboard.paidOrders)}
+              />
+              <HealthRow
+                label="Active categories"
+                value={String(dashboard.activeCategories)}
+              />
             </div>
           </div>
 
           <div className="rounded-[1.5rem] border border-black/5 bg-white p-6 shadow-sm">
             <h3 className="text-xl font-semibold text-black">Quick Actions</h3>
             <div className="mt-5 grid gap-3">
-              <QuickAction label="Add New Product" />
-              <QuickAction label="Review Orders" />
-              <QuickAction label="Update Homepage Banner" />
-              <QuickAction label="Check Payments" />
+              <QuickAction href="/admin/products/new" label="Add New Product" />
+              <QuickAction href="/admin/orders" label="Review Orders" />
+              <QuickAction href="/admin/banners" label="Update Homepage Banner" />
+              <QuickAction href="/admin/orders" label="Check Payments" />
             </div>
           </div>
         </div>
@@ -147,11 +206,13 @@ function HealthRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function QuickAction({ label }: { label: string }) {
+function QuickAction({ href, label }: { href: string; label: string }) {
   return (
-    <button className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium 
-text-stone-700 transition hover:border-black/20 hover:text-black">
+    <Link
+      href={href}
+      className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-700 transition hover:border-black/20 hover:text-black"
+    >
       {label}
-    </button>
+    </Link>
   );
 }

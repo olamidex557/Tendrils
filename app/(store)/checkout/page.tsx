@@ -1,17 +1,26 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowLeft, CreditCard, Lock, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 import { createCheckoutSession } from "@/lib/actions/checkout";
 
+type ShippingZone = {
+  id: string;
+  name: string;
+  amount: number;
+};
+
 export default function CheckoutPage() {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
 
   const cartItems = useCartStore((state) => state.items);
+
+  const [shippingZones, setShippingZones] = useState<ShippingZone[]>([]);
+  const [selectedShippingZoneId, setSelectedShippingZoneId] = useState("");
 
   const [form, setForm] = useState({
     fullName: "",
@@ -20,6 +29,26 @@ export default function CheckoutPage() {
     address: "",
   });
 
+  useEffect(() => {
+    async function loadShippingZones() {
+      try {
+        const response = await fetch("/api/shipping-zones", {
+          cache: "no-store",
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setShippingZones(data.zones ?? []);
+        }
+      } catch {
+        setShippingZones([]);
+      }
+    }
+
+    void loadShippingZones();
+  }, []);
+
   const subtotal = useMemo(() => {
     return cartItems.reduce(
       (sum, item) => sum + Number(item.price) * Number(item.quantity),
@@ -27,7 +56,14 @@ export default function CheckoutPage() {
     );
   }, [cartItems]);
 
-  const shippingFee = 0;
+  const selectedShippingZone = shippingZones.find(
+    (zone) => zone.id === selectedShippingZoneId
+  );
+
+  const shippingFee = selectedShippingZone
+    ? Number(selectedShippingZone.amount)
+    : 0;
+
   const total = subtotal + shippingFee;
 
   function handleChange(
@@ -46,6 +82,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (shippingZones.length > 0 && !selectedShippingZone) {
+      setMessage("Please select a delivery area.");
+      return;
+    }
+
     startTransition(async () => {
       try {
         const result = await createCheckoutSession({
@@ -53,6 +94,9 @@ export default function CheckoutPage() {
           email: form.email.trim(),
           phone: form.phone.trim(),
           address: form.address.trim(),
+          shippingZoneId: selectedShippingZone?.id ?? null,
+          shippingZoneName: selectedShippingZone?.name ?? null,
+          shippingFee,
           items: cartItems.map((item) => ({
             id: item.id,
             productId: item.productId ?? item.id,
@@ -171,6 +215,36 @@ export default function CheckoutPage() {
                 required
               />
 
+              {shippingZones.length > 0 ? (
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="shippingZone"
+                    className="mb-2 block text-sm font-medium text-black"
+                  >
+                    Delivery Area
+                  </label>
+
+                  <select
+                    id="shippingZone"
+                    value={selectedShippingZoneId}
+                    onChange={(e) => setSelectedShippingZoneId(e.target.value)}
+                    required
+                    className="h-12 w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm outline-none transition focus:border-black/30"
+                  >
+                    <option value="">Select delivery area</option>
+
+                    {shippingZones.map((zone) => (
+                      <option key={zone.id} value={zone.id}>
+                        {zone.name} —{" "}
+                        {zone.amount === 0
+                          ? "Free"
+                          : `₦${zone.amount.toLocaleString()}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
               <div className="md:col-span-2">
                 <label
                   htmlFor="address"
@@ -231,16 +305,39 @@ export default function CheckoutPage() {
                   </div>
 
                   <p className="text-sm font-semibold text-black">
-                    ₦{(Number(item.price) * Number(item.quantity)).toLocaleString()}
+                    ₦
+                    {(
+                      Number(item.price) * Number(item.quantity)
+                    ).toLocaleString()}
                   </p>
                 </div>
               ))}
             </div>
 
             <div className="mt-6 space-y-3 border-t border-stone-200 pt-6">
-              <SummaryRow label="Subtotal" value={`₦${subtotal.toLocaleString()}`} />
-              <SummaryRow label="Shipping" value="Free" />
-              <SummaryRow label="Total" value={`₦${total.toLocaleString()}`} bold />
+              <SummaryRow
+                label="Subtotal"
+                value={`₦${subtotal.toLocaleString()}`}
+              />
+
+              <SummaryRow
+                label={
+                  selectedShippingZone
+                    ? `Shipping (${selectedShippingZone.name})`
+                    : "Shipping"
+                }
+                value={
+                  shippingFee === 0
+                    ? "Free"
+                    : `₦${shippingFee.toLocaleString()}`
+                }
+              />
+
+              <SummaryRow
+                label="Total"
+                value={`₦${total.toLocaleString()}`}
+                bold
+              />
             </div>
 
             <Button
@@ -312,12 +409,16 @@ function SummaryRow({
   return (
     <div className="flex items-center justify-between">
       <span
-        className={`text-sm ${bold ? "font-semibold text-black" : "text-stone-600"}`}
+        className={`text-sm ${
+          bold ? "font-semibold text-black" : "text-stone-600"
+        }`}
       >
         {label}
       </span>
       <span
-        className={`text-sm ${bold ? "font-semibold text-black" : "text-stone-700"}`}
+        className={`text-sm ${
+          bold ? "font-semibold text-black" : "text-stone-700"
+        }`}
       >
         {value}
       </span>

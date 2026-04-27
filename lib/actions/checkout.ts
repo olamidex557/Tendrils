@@ -8,6 +8,9 @@ type CheckoutInput = {
   email: string;
   phone: string;
   address: string;
+  shippingZoneId?: string | null;
+  shippingZoneName?: string | null;
+  shippingFee?: number;
   items: {
     id: string;
     productId?: string | null;
@@ -43,8 +46,32 @@ export async function createCheckoutSession(input: CheckoutInput) {
   if (!input.email.trim()) throw new Error("Email is required.");
   if (!input.phone.trim()) throw new Error("Phone number is required.");
   if (!input.address.trim()) throw new Error("Address is required.");
-  if (!process.env.PAYSTACK_SECRET_KEY) throw new Error("PAYSTACK_SECRET_KEY is missing.");
-  if (!process.env.NEXT_PUBLIC_SITE_URL) throw new Error("NEXT_PUBLIC_SITE_URL is missing.");
+  if (!process.env.PAYSTACK_SECRET_KEY) {
+    throw new Error("PAYSTACK_SECRET_KEY is missing.");
+  }
+  if (!process.env.NEXT_PUBLIC_SITE_URL) {
+    throw new Error("NEXT_PUBLIC_SITE_URL is missing.");
+  }
+
+  let verifiedShippingFee = Number(input.shippingFee ?? 0);
+  let verifiedShippingZoneName = input.shippingZoneName?.trim() || null;
+
+  if (input.shippingZoneId && isUuid(input.shippingZoneId)) {
+    const { data: zone, error: zoneError } = await supabaseAdmin
+      .from("shipping_zones")
+      .select("name, amount, is_active")
+      .eq("id", input.shippingZoneId)
+      .maybeSingle();
+
+    if (zoneError) throw new Error(zoneError.message);
+
+    if (!zone || !zone.is_active) {
+      throw new Error("Selected delivery area is unavailable.");
+    }
+
+    verifiedShippingFee = Number(zone.amount ?? 0);
+    verifiedShippingZoneName = zone.name;
+  }
 
   for (const item of input.items) {
     if (item.variantId && isUuid(item.variantId)) {
@@ -135,9 +162,13 @@ export async function createCheckoutSession(input: CheckoutInput) {
     0
   );
 
-  const shippingFee = 0;
+  const shippingFee = verifiedShippingFee;
   const discountAmount = 0;
   const totalAmount = subtotal + shippingFee - discountAmount;
+
+  const shippingAddress = verifiedShippingZoneName
+    ? `${input.address.trim()}\n\nDelivery Area: ${verifiedShippingZoneName}`
+    : input.address.trim();
 
   const { data: order, error: orderError } = await supabaseAdmin
     .from("orders")
@@ -156,7 +187,7 @@ export async function createCheckoutSession(input: CheckoutInput) {
       shipping_name: input.fullName.trim(),
       shipping_email: input.email.trim(),
       shipping_phone: input.phone.trim(),
-      shipping_address: input.address.trim(),
+      shipping_address: shippingAddress,
     })
     .select("id")
     .single();
@@ -205,6 +236,9 @@ export async function createCheckoutSession(input: CheckoutInput) {
           order_id: order.id,
           order_number: orderNumber,
           customer_email: input.email.trim(),
+          shipping_zone_id: input.shippingZoneId ?? null,
+          shipping_zone_name: verifiedShippingZoneName,
+          shipping_fee: shippingFee,
         },
       }),
     }

@@ -17,21 +17,36 @@ import {
   Sparkles,
   Zap,
   BadgeCheck,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { saveStoreSettings } from "@/lib/actions/settings";
+import {
+  deleteShippingZone,
+  saveShippingZones,
+} from "@/lib/actions/shipping-settings";
 import type { AdminStoreSettings } from "@/lib/db/queries/admin-settings";
+import type { ShippingZone } from "@/lib/db/queries/shipping-settings";
 
 type Props = {
   initialSettings: AdminStoreSettings;
+  initialShippingZones: ShippingZone[];
 };
+
+function makeId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return Math.random().toString(36).slice(2);
+}
 
 function formatStableDateTime(value: string | null) {
   if (!value) return null;
 
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return null;
 
   return new Intl.DateTimeFormat("en-GB", {
@@ -45,13 +60,20 @@ function formatStableDateTime(value: string | null) {
   }).format(date);
 }
 
-export default function SettingsClientPage({ initialSettings }: Props) {
+export default function SettingsClientPage({
+  initialSettings,
+  initialShippingZones,
+}: Props) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "idle">(
     "idle"
   );
+
   const [form, setForm] = useState(initialSettings);
+  const [shippingZones, setShippingZones] =
+    useState<ShippingZone[]>(initialShippingZones);
+
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(
     formatStableDateTime(initialSettings.updatedAt)
   );
@@ -70,9 +92,60 @@ export default function SettingsClientPage({ initialSettings }: Props) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  function addShippingZone() {
+    setShippingZones((prev) => [
+      ...prev,
+      {
+        id: makeId(),
+        name: "",
+        amount: "0",
+        isActive: true,
+        sortOrder: 100,
+      },
+    ]);
+  }
+
+  function updateShippingZone(
+    id: string,
+    field: keyof ShippingZone,
+    value: string | boolean | number
+  ) {
+    setShippingZones((prev) =>
+      prev.map((zone) => (zone.id === id ? { ...zone, [field]: value } : zone))
+    );
+  }
+
+  function removeShippingZone(id: string) {
+    startTransition(async () => {
+      try {
+        const existsInDatabase = initialShippingZones.some(
+          (zone) => zone.id === id
+        );
+
+        if (existsInDatabase) {
+          await deleteShippingZone(id);
+        }
+
+        setShippingZones((prev) => prev.filter((zone) => zone.id !== id));
+        setMessage("Shipping place removed.");
+        setMessageType("success");
+      } catch (error) {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Failed to remove shipping place."
+        );
+        setMessageType("error");
+      }
+    });
+  }
+
   const hasChanges = useMemo(() => {
-    return JSON.stringify(form) !== JSON.stringify(initialSettings);
-  }, [form, initialSettings]);
+    return (
+      JSON.stringify(form) !== JSON.stringify(initialSettings) ||
+      JSON.stringify(shippingZones) !== JSON.stringify(initialShippingZones)
+    );
+  }, [form, initialSettings, shippingZones, initialShippingZones]);
 
   const enabledNotifications = useMemo(() => {
     return [
@@ -99,8 +172,7 @@ export default function SettingsClientPage({ initialSettings }: Props) {
     if (form.storefrontLive) {
       return {
         label: "Storefront Live",
-        description:
-          "Customers can browse products and place orders normally.",
+        description: "Customers can browse products and place orders normally.",
         tone: "bg-green-100 text-green-700 border-green-200",
       };
     }
@@ -114,6 +186,7 @@ export default function SettingsClientPage({ initialSettings }: Props) {
 
   function handleReset() {
     setForm(initialSettings);
+    setShippingZones(initialShippingZones);
     setMessage("Settings reset to last saved values.");
     setMessageType("success");
   }
@@ -143,6 +216,16 @@ export default function SettingsClientPage({ initialSettings }: Props) {
           maintenanceMode: form.maintenanceMode,
         });
 
+        await saveShippingZones(
+          shippingZones.map((zone) => ({
+            id: zone.id,
+            name: zone.name,
+            amount: Number(zone.amount || 0),
+            isActive: zone.isActive,
+            sortOrder: Number(zone.sortOrder || 100),
+          }))
+        );
+
         setLastSavedAt(formatStableDateTime(new Date().toISOString()));
         setMessage("Settings saved successfully.");
         setMessageType("success");
@@ -164,19 +247,22 @@ export default function SettingsClientPage({ initialSettings }: Props) {
         className="relative overflow-hidden rounded-[1.75rem] border border-black/5 bg-white p-5 shadow-sm"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,0,0,0.04),transparent_35%)]" />
+
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm text-stone-500">Store configuration</p>
+
             <div className="mt-2 flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100">
                 <Settings className="h-6 w-6 text-black" />
               </div>
+
               <div>
                 <h2 className="text-3xl font-semibold tracking-tight text-black">
                   Settings
                 </h2>
                 <p className="mt-1 text-sm text-stone-600">
-                  Beautiful, lively controls for your storefront operations.
+                  Configure store profile, shipping places, alerts, and storefront behavior.
                 </p>
               </div>
             </div>
@@ -193,6 +279,7 @@ export default function SettingsClientPage({ initialSettings }: Props) {
               <RotateCcw className="mr-2 h-4 w-4" />
               Reset Changes
             </Button>
+
             <Button
               type="submit"
               form="admin-settings-form"
@@ -219,10 +306,32 @@ export default function SettingsClientPage({ initialSettings }: Props) {
               subtitle="Basic brand and contact information."
             >
               <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Store Name" name="storeName" value={form.storeName} onChange={handleChange} />
-                <Field label="Store Email" name="storeEmail" value={form.storeEmail} onChange={handleChange} type="email" />
-                <Field label="Store Phone" name="storePhone" value={form.storePhone} onChange={handleChange} />
-                <Field label="Support Email" name="supportEmail" value={form.supportEmail} onChange={handleChange} type="email" />
+                <Field
+                  label="Store Name"
+                  name="storeName"
+                  value={form.storeName}
+                  onChange={handleChange}
+                />
+                <Field
+                  label="Store Email"
+                  name="storeEmail"
+                  value={form.storeEmail}
+                  onChange={handleChange}
+                  type="email"
+                />
+                <Field
+                  label="Store Phone"
+                  name="storePhone"
+                  value={form.storePhone}
+                  onChange={handleChange}
+                />
+                <Field
+                  label="Support Email"
+                  name="supportEmail"
+                  value={form.supportEmail}
+                  onChange={handleChange}
+                  type="email"
+                />
               </div>
             </CardShell>
           </AnimatedCard>
@@ -268,23 +377,116 @@ export default function SettingsClientPage({ initialSettings }: Props) {
             <CardShell
               icon={<Truck className="h-5 w-5 text-black" />}
               title="Shipping Settings"
-              subtitle="Configure base shipping fees and free shipping rules."
+              subtitle="Create delivery places and set their shipping amounts."
             >
-              <div className="grid gap-5 md:grid-cols-2">
-                <Field
-                  label="Default Shipping Fee"
-                  name="shippingFee"
-                  value={form.shippingFee}
-                  onChange={handleChange}
-                  type="number"
-                />
-                <Field
-                  label="Free Shipping Threshold"
-                  name="freeShippingThreshold"
-                  value={form.freeShippingThreshold}
-                  onChange={handleChange}
-                  type="number"
-                />
+              <div className="space-y-4">
+                <div className="grid gap-5 md:grid-cols-2">
+                  <Field
+                    label="Default Shipping Fee"
+                    name="shippingFee"
+                    value={form.shippingFee}
+                    onChange={handleChange}
+                    type="number"
+                  />
+                  <Field
+                    label="Free Shipping Threshold"
+                    name="freeShippingThreshold"
+                    value={form.freeShippingThreshold}
+                    onChange={handleChange}
+                    type="number"
+                  />
+                </div>
+
+                <div className="rounded-[1.25rem] border border-stone-200 p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-black">
+                        Delivery Places
+                      </p>
+                      <p className="mt-1 text-sm text-stone-500">
+                        Add locations like Lagos Island, Lekki, Abuja, Ibadan.
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={addShippingZone}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Place
+                    </Button>
+                  </div>
+
+                  <div className="mt-5 space-y-4">
+                    {shippingZones.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-6 text-center">
+                        <p className="text-sm font-medium text-black">
+                          No delivery places yet
+                        </p>
+                        <p className="mt-1 text-sm text-stone-500">
+                          Add your first shipping location and amount.
+                        </p>
+                      </div>
+                    ) : (
+                      shippingZones.map((zone) => (
+                        <div
+                          key={zone.id}
+                          className="flex flex-col gap-4 rounded-2xl bg-stone-50 p-4 md:flex-row md:items-end"
+                        >
+                          <div className="flex-1">
+                            <Field
+                              label="Place"
+                              name={`shipping-zone-${zone.id}-name`}
+                              value={zone.name}
+                              onChange={(e) =>
+                                updateShippingZone(zone.id, "name", e.target.value)
+                              }
+                            />
+                          </div>
+
+                          <div className="w-full md:w-[170px]">
+                            <Field
+                              label="Amount"
+                              name={`shipping-zone-${zone.id}-amount`}
+                              value={zone.amount}
+                              type="number"
+                              onChange={(e) =>
+                                updateShippingZone(zone.id, "amount", e.target.value)
+                              }
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 md:h-12 md:justify-end">
+                            <label className="flex items-center gap-2 text-sm text-stone-600">
+                              <input
+                                type="checkbox"
+                                checked={zone.isActive}
+                                onChange={(e) =>
+                                  updateShippingZone(zone.id, "isActive", e.target.checked)
+                                }
+                                className="h-4 w-4"
+                              />
+                              Active
+                            </label>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-12 w-12 rounded-full"
+                              onClick={() => removeShippingZone(zone.id)}
+                              disabled={isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             </CardShell>
           </AnimatedCard>
@@ -293,11 +495,10 @@ export default function SettingsClientPage({ initialSettings }: Props) {
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`rounded-2xl border px-4 py-3 text-sm shadow-sm ${
-                messageType === "success"
-                  ? "border-green-200 bg-green-50 text-green-700"
-                  : "border-red-200 bg-red-50 text-red-700"
-              }`}
+              className={`rounded-2xl border px-4 py-3 text-sm shadow-sm ${messageType === "success"
+                ? "border-green-200 bg-green-50 text-green-700"
+                : "border-red-200 bg-red-50 text-red-700"
+                }`}
             >
               <div className="flex items-center gap-2">
                 {messageType === "success" ? (
@@ -322,7 +523,7 @@ export default function SettingsClientPage({ initialSettings }: Props) {
                   Ready to apply your store settings?
                 </p>
                 <p className="text-sm text-stone-500">
-                  Save changes to keep operations and storefront behavior aligned.
+                  Save changes to keep shipping and storefront behavior aligned.
                 </p>
               </div>
 
@@ -453,18 +654,15 @@ export default function SettingsClientPage({ initialSettings }: Props) {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-black">
-                        Shipping Experience
+                        Shipping Places
                       </p>
                       <p className="mt-1 text-sm text-stone-500">
-                        Free shipping starts at ₦
-                        {Number(
-                          form.freeShippingThreshold || 0
-                        ).toLocaleString()}
+                        {shippingZones.filter((zone) => zone.isActive).length} active place(s)
                       </p>
                     </div>
 
                     <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
-                      Optimized
+                      Configured
                     </span>
                   </div>
                 </HoverPanel>
@@ -500,6 +698,10 @@ export default function SettingsClientPage({ initialSettings }: Props) {
                   value={`₦${Number(
                     form.freeShippingThreshold || 0
                   ).toLocaleString()}`}
+                />
+                <SummaryRow
+                  label="Shipping Places"
+                  value={String(shippingZones.length)}
                 />
               </div>
             </CardShell>
@@ -603,10 +805,7 @@ function CardShell({
 
 function HoverPanel({ children }: { children: React.ReactNode }) {
   return (
-    <motion.div
-      whileHover={{ y: -1 }}
-      className="rounded-2xl bg-stone-50 p-4"
-    >
+    <motion.div whileHover={{ y: -1 }} className="rounded-2xl bg-stone-50 p-4">
       {children}
     </motion.div>
   );
@@ -622,7 +821,9 @@ function Field({
   label: string;
   name: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => void;
   type?: string;
 }) {
   return (
@@ -652,7 +853,9 @@ function SelectField({
   label: string;
   name: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => void;
   options: string[];
 }) {
   return (
@@ -688,7 +891,9 @@ function ToggleRow({
   description: string;
   name: string;
   checked: boolean;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => void;
 }) {
   return (
     <motion.label

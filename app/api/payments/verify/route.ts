@@ -10,10 +10,14 @@ function isUuid(value: string | null | undefined) {
   );
 }
 
+function toKobo(amount: number) {
+  return Math.round(Number(amount || 0) * 100);
+}
+
 async function deductStock(orderId: string) {
   const { data: items, error } = await supabaseAdmin
     .from("order_items")
-    .select("product_id, variant_id, matrix_id, product_name, quantity")
+    .select("product_id, matrix_id, product_name, quantity")
     .eq("order_id", orderId);
 
   if (error) throw new Error(error.message);
@@ -43,7 +47,6 @@ async function deductStock(orderId: string) {
         .eq("id", item.matrix_id);
 
       if (updateError) throw new Error(updateError.message);
-
       continue;
     }
 
@@ -95,7 +98,7 @@ export async function GET(req: Request) {
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, payment_status, stock_deducted")
+      .select("id, order_number, payment_status, stock_deducted, total, total_amount")
       .eq("order_number", reference)
       .maybeSingle();
 
@@ -110,9 +113,7 @@ export async function GET(req: Request) {
     }
 
     const verifyResponse = await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(
-        reference
-      )}`,
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
       {
         headers: {
           Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
@@ -136,6 +137,35 @@ export async function GET(req: Request) {
       );
     }
 
+    const expectedAmount =
+      order.total !== null && order.total !== undefined
+        ? Number(order.total)
+        : Number(order.total_amount ?? 0);
+
+    const expectedKobo = toKobo(expectedAmount);
+    const paidKobo = Number(verifyData?.data?.amount ?? 0);
+
+    if (paidKobo !== expectedKobo) {
+      await supabaseAdmin.from("payments").upsert(
+        {
+          order_id: order.id,
+          reference,
+          status: "amount_mismatch",
+          provider: "paystack",
+          amount: paidKobo / 100,
+          paid_at: new Date().toISOString(),
+        },
+        { onConflict: "reference" }
+      );
+
+      return NextResponse.json(
+        {
+          error: "Payment amount does not match the order total.",
+        },
+        { status: 409 }
+      );
+    }
+
     if (!order.stock_deducted) {
       await deductStock(order.id);
     }
@@ -146,7 +176,7 @@ export async function GET(req: Request) {
         reference,
         status: "success",
         provider: "paystack",
-        amount: Number(verifyData?.data?.amount ?? 0) / 100,
+        amount: paidKobo / 100,
         paid_at: new Date().toISOString(),
       },
       { onConflict: "reference" }
