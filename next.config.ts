@@ -1,9 +1,21 @@
 import type { NextConfig } from "next";
 
-const nextConfig = {
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "zbhyucszazcyfavtzits.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
+  },
 
-  allowedDevOrigins: ["backdrop-hummus-crux.ngrok-free.dev"],
-
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "5mb",
+    },
+  },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

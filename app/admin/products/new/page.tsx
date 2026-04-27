@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createProduct } from "@/lib/actions/products";
+import ImageUploadField from "@/components/admin/image-upload-field";
 
 type ProductType = "simple" | "variable";
 
@@ -282,45 +283,45 @@ export default function AdminNewProductPage() {
         const payload =
           form.productType === "simple"
             ? {
-                name: form.name.trim(),
-                category: form.category,
-                short_description: form.shortDescription.trim() || undefined,
-                description: form.description.trim() || undefined,
-                image_url: form.imageUrl.trim() || undefined,
-                status: mapProductStatus(form.status),
-                product_type: "simple" as const,
-                base_price: form.price ? Number(form.price) : null,
-                compare_price: form.comparePrice
-                  ? Number(form.comparePrice)
-                  : null,
-                stock_quantity: form.stock ? Number(form.stock) : null,
-                sku: form.sku.trim() || null,
-                is_featured: form.featured,
-                is_visible: form.visibility === "Visible",
-                sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
-                moqPricing: cleanedMoqPricing,
-              }
+              name: form.name.trim(),
+              category: form.category,
+              short_description: form.shortDescription.trim() || undefined,
+              description: form.description.trim() || undefined,
+              image_url: form.imageUrl.trim() || undefined,
+              status: mapProductStatus(form.status),
+              product_type: "simple" as const,
+              base_price: form.price ? Number(form.price) : null,
+              compare_price: form.comparePrice
+                ? Number(form.comparePrice)
+                : null,
+              stock_quantity: form.stock ? Number(form.stock) : null,
+              sku: form.sku.trim() || null,
+              is_featured: form.featured,
+              is_visible: form.visibility === "Visible",
+              sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
+              moqPricing: cleanedMoqPricing,
+            }
             : {
-                name: form.name.trim(),
-                category: form.category,
-                short_description: form.shortDescription.trim() || undefined,
-                description: form.description.trim() || undefined,
-                image_url: form.imageUrl.trim() || undefined,
-                status: mapProductStatus(form.status),
-                product_type: "variable" as const,
-                base_price: form.price ? Number(form.price) : null,
-                compare_price: form.comparePrice
-                  ? Number(form.comparePrice)
-                  : null,
-                stock_quantity: null,
-                sku: form.sku.trim() || null,
-                is_featured: form.featured,
-                is_visible: form.visibility === "Visible",
-                sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
-                attributes: normalizedAttributes,
-                inventoryMatrix: cleanedMatrix,
-                moqPricing: cleanedMoqPricing,
-              };
+              name: form.name.trim(),
+              category: form.category,
+              short_description: form.shortDescription.trim() || undefined,
+              description: form.description.trim() || undefined,
+              image_url: form.imageUrl.trim() || undefined,
+              status: mapProductStatus(form.status),
+              product_type: "variable" as const,
+              base_price: form.price ? Number(form.price) : null,
+              compare_price: form.comparePrice
+                ? Number(form.comparePrice)
+                : null,
+              stock_quantity: null,
+              sku: form.sku.trim() || null,
+              is_featured: form.featured,
+              is_visible: form.visibility === "Visible",
+              sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
+              attributes: normalizedAttributes,
+              inventoryMatrix: cleanedMatrix,
+              moqPricing: cleanedMoqPricing,
+            };
 
         await createProduct(payload);
 
@@ -847,23 +848,17 @@ export default function AdminNewProductPage() {
 
           <CardShell title="Media" subtitle="Add a main image URL for product preview.">
             <div className="space-y-5">
-              <Field
-                label="Image URL"
-                name="imageUrl"
+              <ImageUploadField
+                label="Product Image"
                 value={form.imageUrl}
-                onChange={handleChange}
-                placeholder="https://example.com/product-image.jpg"
+                folder="products"
+                onChange={(url) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    imageUrl: url,
+                  }))
+                }
               />
-
-              <div className="rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white">
-                  <UploadCloud className="h-6 w-6 text-stone-600" />
-                </div>
-                <p className="mt-4 text-sm font-medium text-black">Upload support can be added next</p>
-                <p className="mt-2 text-sm text-stone-500">
-                  For now, paste an image URL above for preview.
-                </p>
-              </div>
             </div>
           </CardShell>
 
@@ -1021,11 +1016,10 @@ function TypeCard({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-[1.25rem] border p-5 text-left transition ${
-        active
+      className={`rounded-[1.25rem] border p-5 text-left transition ${active
           ? "border-black bg-stone-900 text-white"
           : "border-stone-200 bg-white text-black hover:border-black/20"
-      }`}
+        }`}
     >
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-base font-semibold">{title}</h4>

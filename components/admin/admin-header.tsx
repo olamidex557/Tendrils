@@ -1,4 +1,5 @@
 import AdminMobileNav from "@/components/admin/admin-mobile-nav";
+import AdminLogoutButton from "@/components/admin/admin-logout-button";
 
 export default function AdminHeader() {
   return (
@@ -17,6 +18,8 @@ backdrop-blur md:px-6">
             </h1>
           </div>
         </div>
+
+        <AdminLogoutButton />
       </div>
     </header>
   );

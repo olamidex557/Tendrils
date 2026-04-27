@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { updateBanner } from "@/lib/actions/banners";
 import type { AdminEditBannerRecord } from "@/lib/db/queries/admin-content";
+import ImageUploadField from "@/components/admin/image-upload-field";
 
 type Props = {
   banner: AdminEditBannerRecord & {
@@ -245,25 +246,17 @@ export default function EditBannerForm({ banner }: Props) {
             subtitle="Update banner image."
           >
             <div className="space-y-5">
-              <Field
-                label="Image URL"
-                name="imageUrl"
+              <ImageUploadField
+                label="Banner Image"
                 value={form.imageUrl}
-                onChange={handleChange}
-                placeholder="https://example.com/banner-image.jpg"
+                folder="banners"
+                onChange={(url) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    imageUrl: url,
+                  }))
+                }
               />
-
-              <div className="rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white">
-                  <UploadCloud className="h-6 w-6 text-stone-600" />
-                </div>
-                <p className="mt-4 text-sm font-medium text-black">
-                  Upload support can be added next
-                </p>
-                <p className="mt-2 text-sm text-stone-500">
-                  For now, paste an image URL above for preview.
-                </p>
-              </div>
             </div>
           </CardShell>
 

@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { updateProduct } from "@/lib/actions/products";
 import type { AdminEditProductRecord } from "@/lib/db/queries/admin-products";
+import ImageUploadField from "@/components/admin/image-upload-field";
 
 type ProductType = "simple" | "variable";
 
@@ -74,14 +75,14 @@ export default function EditProductForm({ product }: EditProductFormProps) {
   const [attributes, setAttributes] = useState<AttributeRow[]>(
     product.attributes.length > 0
       ? product.attributes.map((attribute) => ({
-          id: attribute.id,
-          name: attribute.name,
-          values: attribute.values.join(", "),
-        }))
+        id: attribute.id,
+        name: attribute.name,
+        values: attribute.values.join(", "),
+      }))
       : [
-          { id: makeId(), name: "Size", values: "" },
-          { id: makeId(), name: "Color", values: "" },
-        ]
+        { id: makeId(), name: "Size", values: "" },
+        { id: makeId(), name: "Color", values: "" },
+      ]
   );
 
   const [matrixCells, setMatrixCells] = useState<MatrixCell[]>(
@@ -290,45 +291,45 @@ export default function EditProductForm({ product }: EditProductFormProps) {
         const payload =
           form.productType === "simple"
             ? {
-                name: form.name.trim(),
-                category: form.category,
-                short_description: form.shortDescription.trim() || undefined,
-                description: form.description.trim() || undefined,
-                image_url: form.imageUrl.trim() || undefined,
-                status: mapProductStatus(form.status),
-                product_type: "simple" as const,
-                base_price: form.price ? Number(form.price) : null,
-                compare_price: form.comparePrice
-                  ? Number(form.comparePrice)
-                  : null,
-                stock_quantity: form.stock ? Number(form.stock) : null,
-                sku: form.sku.trim() || null,
-                is_featured: form.featured,
-                is_visible: form.visibility === "Visible",
-                sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
-                moqPricing: cleanedMoqPricing,
-              }
+              name: form.name.trim(),
+              category: form.category,
+              short_description: form.shortDescription.trim() || undefined,
+              description: form.description.trim() || undefined,
+              image_url: form.imageUrl.trim() || undefined,
+              status: mapProductStatus(form.status),
+              product_type: "simple" as const,
+              base_price: form.price ? Number(form.price) : null,
+              compare_price: form.comparePrice
+                ? Number(form.comparePrice)
+                : null,
+              stock_quantity: form.stock ? Number(form.stock) : null,
+              sku: form.sku.trim() || null,
+              is_featured: form.featured,
+              is_visible: form.visibility === "Visible",
+              sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
+              moqPricing: cleanedMoqPricing,
+            }
             : {
-                name: form.name.trim(),
-                category: form.category,
-                short_description: form.shortDescription.trim() || undefined,
-                description: form.description.trim() || undefined,
-                image_url: form.imageUrl.trim() || undefined,
-                status: mapProductStatus(form.status),
-                product_type: "variable" as const,
-                base_price: form.price ? Number(form.price) : null,
-                compare_price: form.comparePrice
-                  ? Number(form.comparePrice)
-                  : null,
-                stock_quantity: null,
-                sku: form.sku.trim() || null,
-                is_featured: form.featured,
-                is_visible: form.visibility === "Visible",
-                sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
-                attributes: normalizedAttributes,
-                inventoryMatrix: cleanedMatrix,
-                moqPricing: cleanedMoqPricing,
-              };
+              name: form.name.trim(),
+              category: form.category,
+              short_description: form.shortDescription.trim() || undefined,
+              description: form.description.trim() || undefined,
+              image_url: form.imageUrl.trim() || undefined,
+              status: mapProductStatus(form.status),
+              product_type: "variable" as const,
+              base_price: form.price ? Number(form.price) : null,
+              compare_price: form.comparePrice
+                ? Number(form.comparePrice)
+                : null,
+              stock_quantity: null,
+              sku: form.sku.trim() || null,
+              is_featured: form.featured,
+              is_visible: form.visibility === "Visible",
+              sort_order: form.sortOrder ? Number(form.sortOrder) : 100,
+              attributes: normalizedAttributes,
+              inventoryMatrix: cleanedMatrix,
+              moqPricing: cleanedMoqPricing,
+            };
 
         await updateProduct(product.id, payload);
         setMessage("Product updated successfully.");
@@ -940,25 +941,17 @@ export default function EditProductForm({ product }: EditProductFormProps) {
             subtitle="Update the main image URL for product preview."
           >
             <div className="space-y-5">
-              <Field
-                label="Image URL"
-                name="imageUrl"
+              <ImageUploadField
+                label="Product Image"
                 value={form.imageUrl}
-                onChange={handleChange}
-                placeholder="https://example.com/product-image.jpg"
+                folder="products"
+                onChange={(url) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    imageUrl: url,
+                  }))
+                }
               />
-
-              <div className="rounded-[1.25rem] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white">
-                  <UploadCloud className="h-6 w-6 text-stone-600" />
-                </div>
-                <p className="mt-4 text-sm font-medium text-black">
-                  Upload support can be added next
-                </p>
-                <p className="mt-2 text-sm text-stone-500">
-                  For now, paste an image URL above for preview.
-                </p>
-              </div>
             </div>
           </CardShell>
 
@@ -1157,11 +1150,10 @@ function TypeCard({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-[1.25rem] border p-5 text-left transition ${
-        active
+      className={`rounded-[1.25rem] border p-5 text-left transition ${active
           ? "border-black bg-stone-900 text-white"
           : "border-stone-200 bg-white text-black hover:border-black/20"
-      }`}
+        }`}
     >
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-base font-semibold">{title}</h4>
@@ -1170,9 +1162,8 @@ function TypeCard({
         />
       </div>
       <p
-        className={`mt-2 text-sm leading-6 ${
-          active ? "text-white/80" : "text-stone-600"
-        }`}
+        className={`mt-2 text-sm leading-6 ${active ? "text-white/80" : "text-stone-600"
+          }`}
       >
         {description}
       </p>

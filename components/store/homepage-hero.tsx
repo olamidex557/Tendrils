@@ -168,25 +168,6 @@ export default function HomepageHero({ banners }: HomepageHeroProps) {
         </div>
 
         <div className="hidden lg:flex lg:items-end lg:justify-end">
-          <div
-            className={`max-w-sm rounded-[2rem] border border-white/10 bg-white/10 p-6 backdrop-blur-xl transition-all duration-500 ${
-              isVisible
-                ? "translate-y-0 opacity-100"
-                : "translate-y-3 opacity-0"
-            }`}
-          >
-            <p className="text-sm uppercase tracking-[0.2em] text-white/60">
-              Live campaign
-            </p>
-
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight">
-              {title}
-            </h2>
-
-            <p className="mt-3 text-sm leading-7 text-white/75">
-              Fresh homepage campaigns managed directly from your admin dashboard.
-            </p>
-
             {currentBanner.scheduleText ? (
               <div className="mt-5 inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs text-white/80">
                 {currentBanner.scheduleText}
@@ -194,7 +175,6 @@ export default function HomepageHero({ banners }: HomepageHeroProps) {
             ) : null}
           </div>
         </div>
-      </div>
     </section>
   );
 }
