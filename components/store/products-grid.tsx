@@ -53,9 +53,6 @@ export default function ProductsGrid({
       {products.length === 0 ? (
         <div className="rounded-[1.5rem] border border-dashed border-stone-300 bg-white p-10 text-center">
           <h3 className="text-xl font-semibold text-black">No products found</h3>
-          <p className="mt-2 text-sm text-stone-500">
-            Try adjusting your filters or publish products from the admin dashboard.
-          </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">

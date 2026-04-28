@@ -13,9 +13,6 @@ export default function CategoriesGrid({ categories }: CategoriesGridProps) {
     return (
       <div className="rounded-[1.5rem] border border-dashed border-stone-300 bg-white p-10 text-center">
         <h2 className="text-2xl font-semibold text-black">No categories yet</h2>
-        <p className="mt-2 text-sm text-stone-500">
-          Publish visible categories from the admin dashboard to show them here.
-        </p>
       </div>
     );
   }

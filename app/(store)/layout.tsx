@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import Navbar from "@/components/store/navbar";
 import Footer from "@/components/store/footer";
-import StorefrontCategoryStrip from "@/components/store/storefront-category-strip";
 import StorefrontGate from "@/components/store/storefront-gate";
 import { getStorefrontRuntimeSettings } from "@/lib/db/queries/storefront-settings";
 
@@ -36,7 +35,12 @@ export default async function StoreLayout({
     <>
       <Navbar />
       {children}
-      <Footer />
+      <Footer
+        storeName={settings.storeName}
+        storeEmail={settings.storeEmail}
+        storePhone={settings.storePhone}
+        supportEmail={settings.supportEmail}
+      />
     </>
   );
 }

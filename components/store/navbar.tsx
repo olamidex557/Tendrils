@@ -18,9 +18,11 @@ import { useCartStore } from "@/store/cart-store";
 import { useWishlistStore } from "@/store/wishlist-store";
 
 const navLinks = [
+  { label: "About", href: "/about" },
   { label: "Products", href: "/products" },
   { label: "Categories", href: "/categories" },
   { label: "Track Order", href: "/order-tracking" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export default function Navbar() {

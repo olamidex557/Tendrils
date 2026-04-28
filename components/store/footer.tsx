@@ -1,94 +1,136 @@
 import Link from "next/link";
-import { MapPin, Phone, Mail } from "lucide-react";
+import type { ReactNode } from "react";
+import { ArrowUpRight, Mail, Phone, ShieldCheck, Truck } from "lucide-react";
 import { FaFacebookF, FaTwitter, FaInstagram } from "react-icons/fa";
+import Logo from "@/components/shared/logo";
 
-export default function Footer() {
+type FooterProps = {
+  storeName: string;
+  storeEmail: string | null;
+  storePhone: string | null;
+  supportEmail: string | null;
+};
+
+const shoppingLinks: [string, string][] = [
+  ["About us", "/about"],
+  ["All products", "/products"],
+  ["Categories", "/categories"],
+  ["Wishlist", "/wishlist"],
+  ["Cart", "/cart"],
+  ["Track order", "/order-tracking"],
+  ["Contact us", "/contact"],
+];
+
+const categoryLinks: [string, string][] = [
+  ["Electronics", "/categories/electronics"],
+  ["Fashion", "/categories/fashion"],
+  ["Beauty", "/categories/beauty"],
+  ["Home essentials", "/categories/home-essentials"],
+  ["Sports", "/categories/sports"],
+];
+
+export default function Footer({
+  storeName,
+  storeEmail,
+  storePhone,
+  supportEmail,
+}: FooterProps) {
+  const email = supportEmail || storeEmail || "support@ajikeplus.com";
+  const phone = storePhone || "+234 705 224 3768";
+
   return (
-    <footer className="mt-10 bg-[#8d86f7] px-3 py-6 md:px-6 md:py-10">
-      <div className="mx-auto max-w-7xl overflow-hidden rounded-[1.5rem] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
-        <div className="px-5 py-6 md:px-12 md:py-10">
-          <div className="grid gap-5 md:grid-cols-4">
-            <div className="md:col-span-1">
-              <div className="text-lg font-bold tracking-tight text-black">
-                TEMPLATE
+    <footer className="mt-12 bg-[#111111] px-4 pt-10 text-white md:px-6 md:pt-14">
+      <div className="mx-auto max-w-7xl">
+        <div className="grid gap-10 border-b border-white/10 pb-10 lg:grid-cols-[1.1fr_1.9fr] lg:gap-14">
+          <div className="max-w-md">
+            <Link href="/" className="inline-flex items-center gap-4">
+              <Logo size="md" className="rounded-full bg-white p-1" />
+              <span className="text-xl font-bold tracking-tight">
+                {storeName}
+              </span>
+            </Link>
+
+            <p className="mt-5 text-sm leading-6 text-white/65">
+              Carefully selected beauty, fashion, home, lifestyle, and everyday
+              essentials delivered with a simple shopping experience.
+            </p>
+
+            <div className="mt-6 grid gap-3 text-sm text-white/70">
+              <div className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-[#9bf36b]" />
+                <span>Fast order processing across supported locations.</span>
               </div>
 
-              <p className="mt-2 max-w-sm text-xs leading-5 text-stone-600">
-                Quality products across multiple categories, built for simple and trusted shopping.
-              </p>
-
-              <div className="mt-3 flex items-center gap-3 text-stone-500">
-                <a href="#" aria-label="Facebook">
-                  <FaFacebookF className="h-3.5 w-3.5" />
-                </a>
-                <a href="#" aria-label="Twitter">
-                  <FaTwitter className="h-3.5 w-3.5" />
-                </a>
-                <a href="#" aria-label="Instagram">
-                  <FaInstagram className="h-3.5 w-3.5" />
-                </a>
+              <div className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#9bf36b]" />
+                <span>No refunds or exchanges after completed purchase.</span>
               </div>
             </div>
 
-            <FooterGroup
-              title="Links"
-              links={[
-                ["About", "/about"],
-                ["Shop", "/products"],
-                ["Categories", "/categories/all"],
-                ["Track", "/order-tracking"],
-                ["Contact", "/contact"],
-              ]}
-            />
-
-            <FooterGroup
-              title="Categories"
-              links={[
-                ["Electronics", "/categories/electronics"],
-                ["Fashion", "/categories/fashion"],
-                ["Grocery", "/categories/grocery"],
-                ["Home", "/categories/home-essentials"],
-                ["Sports", "/categories/sports"],
-              ]}
-            />
-
-            <div>
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-black">
-                Contact
-              </h3>
-
-              <div className="mt-2 space-y-2 text-xs leading-5 text-stone-600">
-                <p className="flex gap-2">
-                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8d86f7]" />
-                  <span className="line-clamp-1">
-                    Lorem ipsum vitae voluptatum alias eaque id eos delen
-                  </span>
-                </p>
-
-                <p className="flex items-center gap-2">
-                  <Mail className="h-3.5 w-3.5 shrink-0 text-[#8d86f7]" />
-                  info@TEMPLATE.com
-                </p>
-
-                <p className="flex items-center gap-2">
-                  <Phone className="h-3.5 w-3.5 shrink-0 text-[#8d86f7]" />
-                  +234 705 224 3768
-                </p>
-              </div>
+            <div className="mt-6 flex items-center gap-3">
+              <SocialLink href="#" label="Facebook">
+                <FaFacebookF className="h-4 w-4" />
+              </SocialLink>
+              <SocialLink href="#" label="Twitter">
+                <FaTwitter className="h-4 w-4" />
+              </SocialLink>
+              <SocialLink href="#" label="Instagram">
+                <FaInstagram className="h-4 w-4" />
+              </SocialLink>
             </div>
           </div>
 
-          <div className="mt-5 border-t border-stone-200 pt-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-stone-500">
-              <p>© 2026 OLABYTE TECH</p>
+          <div className="grid gap-8 sm:grid-cols-3">
+            <FooterGroup title="Shop" links={shoppingLinks} />
 
-              <div className="flex flex-wrap gap-3">
-                <Link href="/terms">Terms</Link>
-                <Link href="/privacy">Privacy</Link>
-                <Link href="/cookies">Cookies</Link>
-                <Link href="/sitemap">Sitemap</Link>
+            <FooterGroup title="Categories" links={categoryLinks} />
+
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                Contact
+              </h3>
+
+              <div className="mt-4 space-y-3 text-sm leading-6 text-white/65">
+                <a
+                  href={`mailto:${email}`}
+                  className="flex items-center gap-3 transition hover:text-white"
+                >
+                  <Mail className="h-4 w-4 shrink-0 text-[#9bf36b]" />
+                  <span className="break-all">{email}</span>
+                </a>
+
+                <a
+                  href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+                  className="flex items-center gap-3 transition hover:text-white"
+                >
+                  <Phone className="h-4 w-4 shrink-0 text-[#9bf36b]" />
+                  <span>{phone}</span>
+                </a>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 py-5 text-xs text-white/55 sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            <strong className="font-semibold text-white/80">
+              © 2026 {storeName}
+            </strong>
+          </p>
+
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <Link href="/products" className="transition hover:text-white">
+              Products
+            </Link>
+            <Link href="/categories" className="transition hover:text-white">
+              Categories
+            </Link>
+            <Link href="/order-tracking" className="transition hover:text-white">
+              Track order
+            </Link>
+            <Link href="/contact" className="transition hover:text-white">
+              Contact
+            </Link>
           </div>
         </div>
       </div>
@@ -105,17 +147,42 @@ function FooterGroup({
 }) {
   return (
     <div>
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-black">
+      <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
         {title}
       </h3>
 
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-600">
+      <div className="mt-4 grid gap-2 text-sm text-white/65">
         {links.map(([label, href]) => (
-          <Link key={href} href={href} className="transition hover:text-black">
-            {label}
+          <Link
+            key={href}
+            href={href}
+            className="group inline-flex w-fit items-center gap-2 transition hover:text-white"
+          >
+            <span>{label}</span>
+            <ArrowUpRight className="h-3.5 w-3.5 opacity-0 transition group-hover:opacity-100" />
           </Link>
         ))}
       </div>
     </div>
   );
-} 
+}
+
+function SocialLink({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      aria-label={label}
+      className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition hover:border-white/30 hover:bg-white hover:text-black"
+    >
+      {children}
+    </a>
+  );
+}
