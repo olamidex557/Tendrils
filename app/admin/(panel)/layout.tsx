@@ -1,12 +1,16 @@
-import type { ReactNode } from "react";
-import AdminShell from "@/components/admin/admin-shell";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
-  return <AdminShell>{children}</AdminShell>;
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect("/admin/sign-in");
+  }
+
+  return <>{children}</>;
 }
