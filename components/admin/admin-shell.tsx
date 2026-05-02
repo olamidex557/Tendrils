@@ -13,15 +13,15 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div data-admin-shell className="min-h-screen bg-stone-50">
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 md:px-6 lg:grid-cols-[260px_1fr]">
-        <div className="hidden lg:block">
+        <div data-admin-sidebar className="hidden lg:block">
           <div className="sticky top-6">
             <AdminSidebar />
           </div>
         </div>
 
-        <main className="min-w-0 space-y-6">
+        <main data-admin-main className="min-w-0 space-y-6">
           <AdminHeader />
           {children}
         </main>
