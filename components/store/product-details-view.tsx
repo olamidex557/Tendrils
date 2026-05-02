@@ -262,67 +262,57 @@ export default function ProductDetailsView({ product }: ProductDetailsViewProps)
         <span className="font-medium text-black">{product.name}</span>
       </div>
 
-      <div className="grid gap-10 lg:grid-cols-[1fr_1fr]">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)] xl:gap-14">
         <div>
-          <div className="relative overflow-hidden rounded-[1.8rem] border border-black/5 bg-stone-100">
+          <div className="relative overflow-hidden rounded-[1.5rem] border border-black/5 bg-stone-100 shadow-[0_18px_60px_rgba(20,20,20,0.08)]">
             <img
               src={galleryImages[activeImageIndex]}
               alt={product.name}
-              className="h-[420px] w-full object-cover md:h-[520px]"
+              className="h-[420px] w-full object-cover transition duration-500 md:h-[560px]"
             />
 
             <button
               type="button"
+              aria-label="Previous product image"
               onClick={() =>
                 setActiveImageIndex((prev) =>
                   prev === 0 ? galleryImages.length - 1 : prev - 1
                 )
               }
-              className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow"
+              className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-black shadow-lg shadow-black/10 backdrop-blur transition hover:bg-white"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
 
             <button
               type="button"
+              aria-label="Next product image"
               onClick={() =>
                 setActiveImageIndex((prev) =>
                   prev === galleryImages.length - 1 ? 0 : prev + 1
                 )
               }
-              className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow"
+              className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-black shadow-lg shadow-black/10 backdrop-blur transition hover:bg-white"
             >
               <ChevronRightIcon className="h-5 w-5" />
             </button>
-          </div>
 
-          <div className="mt-4 flex gap-3 overflow-x-auto">
-            {galleryImages.map((image, index) => (
-              <button
-                key={`${image}-${index}`}
-                type="button"
-                onClick={() => setActiveImageIndex(index)}
-                className={`overflow-hidden rounded-2xl border ${activeImageIndex === index ? "border-black" : "border-stone-200"
-                  }`}
-              >
-                <img
-                  src={image}
-                  alt={`${product.name} preview ${index + 1}`}
-                  className="h-24 w-24 object-cover"
-                />
-              </button>
-            ))}
+            <div className="absolute bottom-4 right-4 rounded-full border border-white/50 bg-white/90 px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm backdrop-blur">
+              {activeImageIndex + 1} / {galleryImages.length}
+            </div>
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
           <div>
             {product.categoryName ? (
-              <p className="text-sm text-stone-500">{product.categoryName}</p>
+              <p className="inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold uppercase text-stone-500">
+                {product.categoryName}
+              </p>
             ) : null}
 
-            <div className="mt-2 flex items-start justify-between gap-4">
-              <h1 className="text-3xl font-semibold text-black md:text-5xl">
+            <div className="mt-4 flex items-start justify-between gap-4">
+              <h1 className="text-4xl font-semibold leading-tight text-black md:text-6xl">
                 {product.name}
               </h1>
 
@@ -339,14 +329,15 @@ export default function ProductDetailsView({ product }: ProductDetailsViewProps)
                     description: product.shortDescription ?? undefined,
                   })
                 }
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-stone-200 bg-white text-black"
+                aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-stone-200 bg-white text-black shadow-sm transition hover:border-stone-300 hover:bg-stone-50"
               >
                 <Heart className={`h-5 w-5 ${isInWishlist ? "fill-current" : ""}`} />
               </button>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <p className="text-3xl font-bold text-[#b48b3c]">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <p className="text-4xl font-bold text-[#a77b25]">
                 ₦{effectivePrice.toLocaleString()}
               </p>
 
@@ -364,7 +355,7 @@ export default function ProductDetailsView({ product }: ProductDetailsViewProps)
             </div>
 
             {product.shortDescription ? (
-              <p className="mt-4 text-sm leading-7 text-stone-600 md:text-base">
+              <p className="mt-5 max-w-xl text-base leading-8 text-stone-600">
                 {product.shortDescription}
               </p>
             ) : null}
@@ -441,11 +432,12 @@ export default function ProductDetailsView({ product }: ProductDetailsViewProps)
           ) : null}
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center rounded-full border border-stone-200">
+            <div className="flex h-12 items-center rounded-full border border-stone-200 bg-white shadow-sm">
               <button
                 type="button"
                 onClick={decreaseQuantity}
-                className="flex h-11 w-11 items-center justify-center text-stone-600"
+                aria-label="Decrease quantity"
+                className="flex h-12 w-12 items-center justify-center text-stone-600 transition hover:text-black"
               >
                 <Minus className="h-4 w-4" />
               </button>
@@ -457,7 +449,8 @@ export default function ProductDetailsView({ product }: ProductDetailsViewProps)
               <button
                 type="button"
                 onClick={increaseQuantity}
-                className="flex h-11 w-11 items-center justify-center text-stone-600"
+                aria-label="Increase quantity"
+                className="flex h-12 w-12 items-center justify-center text-stone-600 transition hover:text-black disabled:text-stone-300"
                 disabled={effectiveStock <= 0 || quantity >= effectiveStock}
               >
                 <Plus className="h-4 w-4" />
@@ -468,30 +461,31 @@ export default function ProductDetailsView({ product }: ProductDetailsViewProps)
               type="button"
               disabled={!canBuy}
               onClick={handleAddToCart}
-              className="h-11 rounded-full bg-[#1f4d2e] px-7 text-white hover:bg-[#183d25] disabled:opacity-50"
+              className="h-12 rounded-full bg-[#1f4d2e] px-8 text-white shadow-sm shadow-[#1f4d2e]/20 hover:bg-[#183d25] disabled:opacity-50"
             >
               <ShoppingCart className="mr-2 h-4 w-4" />
               Add to Cart
             </Button>
 
-            <Button type="button" variant="outline" className="h-11 rounded-full px-6">
+            <Button type="button" variant="outline" className="h-12 rounded-full px-7">
               Buy Now
             </Button>
           </div>
 
-          <div className="rounded-[1.25rem] bg-stone-50 p-4 text-sm text-stone-600">
-            <p>
-              <span className="font-semibold text-black">SKU:</span> {displaySku}
-            </p>
-            <p className="mt-1">
-              <span className="font-semibold text-black">Total:</span>{" "}
-              ₦{totalPrice.toLocaleString()}
-            </p>
+          <div className="grid gap-3 rounded-[1.25rem] border border-stone-100 bg-stone-50/80 p-4 text-sm text-stone-600 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span className="font-semibold text-black">SKU</span>
+              <span>{displaySku}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-t border-stone-200 pt-3">
+              <span className="font-semibold text-black">Total</span>
+              <span className="font-semibold text-black">₦{totalPrice.toLocaleString()}</span>
+            </div>
             {quantityInCart > 0 ? (
-              <p className="mt-1">
-                <span className="font-semibold text-black">In Cart:</span>{" "}
-                {quantityInCart}
-              </p>
+              <div className="flex items-center justify-between gap-4 border-t border-stone-200 pt-3">
+                <span className="font-semibold text-black">In Cart</span>
+                <span>{quantityInCart}</span>
+              </div>
             ) : null}
           </div>
         </div>
