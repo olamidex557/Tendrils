@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import AdminShell from "@/components/admin/admin-shell";
 
 export default async function AdminLayout({
   children,
@@ -12,5 +13,5 @@ export default async function AdminLayout({
     redirect("/admin/sign-in");
   }
 
-  return <>{children}</>;
+  return <AdminShell>{children}</AdminShell>;
 }

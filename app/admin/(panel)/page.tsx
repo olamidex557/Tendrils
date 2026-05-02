@@ -4,7 +4,10 @@ import {
   ShoppingCart,
   CreditCard,
   TrendingUp,
+  ArrowUpRight,
+  Plus,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { getAdminDashboardStats } from "@/lib/db/queries/admin-dashboard";
 
 function money(value: number) {
@@ -59,10 +62,25 @@ export default async function AdminDashboardPage() {
 
   return (
     <section className="space-y-6">
-      <div>
-        <p className="text-sm text-stone-500">
-          Welcome back. Here’s what’s happening in your store today.
-        </p>
+      <div className="rounded-[1.5rem] border border-black/5 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm text-stone-500">Overview</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-black">
+              Dashboard
+            </h1>
+            <p className="mt-2 text-sm text-stone-600">
+              Store performance, recent orders, and quick admin actions.
+            </p>
+          </div>
+
+          <Button asChild className="rounded-full bg-black px-5 text-white hover:bg-black/90">
+            <Link href="/admin/products/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Product
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
@@ -188,7 +206,7 @@ export default async function AdminDashboardPage() {
               <QuickAction href="/admin/products/new" label="Add New Product" />
               <QuickAction href="/admin/orders" label="Review Orders" />
               <QuickAction href="/admin/banners" label="Update Homepage Banner" />
-              <QuickAction href="/admin/orders" label="Check Payments" />
+              <QuickAction href="/admin/payments" label="Check Payments" />
             </div>
           </div>
         </div>
@@ -210,9 +228,10 @@ function QuickAction({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-700 transition hover:border-black/20 hover:text-black"
+      className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-700 transition hover:border-black/20 hover:text-black"
     >
-      {label}
+      <span>{label}</span>
+      <ArrowUpRight className="h-4 w-4" />
     </Link>
   );
 }
