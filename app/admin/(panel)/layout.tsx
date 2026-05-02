@@ -1,6 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import AdminShell from "@/components/admin/admin-shell";
 
 export default async function AdminLayout({
   children,
@@ -13,5 +12,12 @@ export default async function AdminLayout({
     redirect("/admin/sign-in");
   }
 
-  return <AdminShell>{children}</AdminShell>;
+  const user = await currentUser();
+
+  // 🔒 Replace with your real admin email
+  if (user?.emailAddresses[0].emailAddress !== "YOUR_EMAIL@gmail.com") {
+    redirect("/");
+  }
+
+  return <>{children}</>;
 }
