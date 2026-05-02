@@ -14,8 +14,9 @@ export default async function AdminLayout({
 
   const user = await currentUser();
 
-  // 🔒 Replace with your real admin email
-  if (user?.emailAddresses[0].emailAddress !== "YOUR_EMAIL@gmail.com") {
+  const adminUsername = "Tendrils";
+
+  if (user?.username !== adminUsername) {
     redirect("/");
   }
 
