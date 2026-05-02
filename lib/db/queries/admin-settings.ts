@@ -38,7 +38,7 @@ export const getAdminStoreSettings = cache(
         id: "",
         storeName: "Ajike+",
         storeEmail: "info@ajikeplus.com",
-        storePhone: "+234 705 224 3768",
+        storePhone: "+234 703 904 1074",
         supportEmail: "support@ajikeplus.com",
         currency: "NGN",
         locale: "en-NG",

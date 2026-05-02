@@ -36,7 +36,7 @@ export default function Footer({
   supportEmail,
 }: FooterProps) {
   const email = supportEmail || storeEmail || "support@ajikeplus.com";
-  const phone = storePhone || "+234 705 224 3768";
+  const phone = storePhone || "+234 703 904 1074";
 
   return (
     <footer className="mt-12 bg-[#111111] px-4 pt-10 text-white md:px-6 md:pt-14">

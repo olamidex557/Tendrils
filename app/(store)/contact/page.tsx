@@ -17,7 +17,7 @@ export default async function ContactPage() {
   const settings = await getStorefrontRuntimeSettings();
   const email =
     settings.supportEmail || settings.storeEmail || "support@ajikeplus.com";
-  const phone = settings.storePhone || "+234 705 224 3768";
+  const phone = settings.storePhone || "+234 703 904 1074";
   const telHref = phone.replace(/[^\d+]/g, "");
 
   return (

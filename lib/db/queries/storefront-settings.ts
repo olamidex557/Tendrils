@@ -30,7 +30,7 @@ export const getStorefrontRuntimeSettings = cache(
       maintenanceMode: data?.maintenance_mode ?? false,
       storeName: data?.store_name ?? "Ajike+",
       storeEmail: data?.store_email ?? "info@ajikeplus.com",
-      storePhone: data?.store_phone ?? "+234 705 224 3768",
+      storePhone: data?.store_phone ?? "+234 703 904 1074",
       supportEmail: data?.support_email ?? null,
     };
   }
