@@ -3,15 +3,15 @@ import { LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
 
 export default function AdminSignInPage() {
   return (
-    <main className="min-h-screen bg-stone-950 px-4 py-8 text-white">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1fr_440px]">
+    <main className="min-h-screen bg-[#080808] px-4 py-5 text-white sm:py-8">
+      <div className="mx-auto grid min-h-[calc(100vh-2.5rem)] max-w-6xl items-center gap-6 sm:min-h-[calc(100vh-4rem)] lg:grid-cols-[1fr_440px] lg:gap-8">
         <section className="hidden lg:block">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-white/70">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-medium uppercase text-white/70">
             <ShieldCheck className="h-4 w-4" />
             Admin Access
           </div>
 
-          <h1 className="mt-8 max-w-xl text-5xl font-semibold tracking-tight">
+          <h1 className="mt-8 max-w-xl text-5xl font-semibold">
             Welcome back to your store control center.
           </h1>
 
@@ -27,37 +27,56 @@ export default function AdminSignInPage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-white/10 bg-white p-5 shadow-2xl shadow-black/30 sm:p-6">
-          <div className="mb-6 text-center">
-            <p className="text-sm font-medium text-stone-500">Tendrils Store</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-black">
-              Sign in to Admin
-            </h2>
+        <section className="mx-auto w-full max-w-[430px]">
+          <div className="mb-5 text-center lg:hidden">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-medium uppercase text-white/70">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Admin Access
+            </div>
+
+            <h1 className="mt-5 text-3xl font-semibold leading-tight text-white">
+              Welcome back.
+            </h1>
+
+            <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-white/55">
+              Sign in to manage orders, products, and store operations.
+            </p>
           </div>
 
-          <SignIn
-            routing="path"
-            path="/admin/sign-in"
-            fallbackRedirectUrl="/admin"
-            signUpUrl="/admin/sign-in"
-            appearance={{
-              elements: {
-                rootBox: "mx-auto w-full",
-                card: "shadow-none border-0 p-0 w-full",
-                headerTitle: "hidden",
-                headerSubtitle: "hidden",
-                socialButtonsBlockButton:
-                  "rounded-2xl border-stone-200 text-stone-700",
-                formButtonPrimary:
-                  "rounded-full bg-black text-white hover:bg-black/90 text-sm normal-case",
-                formFieldInput:
-                  "rounded-2xl border-stone-200 focus:border-black focus:ring-black",
-                formFieldLabel: "text-stone-700",
-                footerAction: "hidden",
-                footer: "hidden",
-              },
-            }}
-          />
+          <div className="rounded-[1.5rem] border border-white/10 bg-white p-4 shadow-2xl shadow-black/30 sm:rounded-[2rem] sm:p-6">
+            <div className="mb-5 text-center sm:mb-6">
+              <p className="text-sm font-medium text-stone-500">
+                Tendrils Store
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-black">
+                Sign in to Admin
+              </h2>
+            </div>
+
+            <SignIn
+              routing="path"
+              path="/admin/sign-in"
+              fallbackRedirectUrl="/admin"
+              signUpUrl="/admin/sign-in"
+              appearance={{
+                elements: {
+                  rootBox: "mx-auto w-full",
+                  card: "shadow-none border-0 p-0 w-full",
+                  headerTitle: "hidden",
+                  headerSubtitle: "hidden",
+                  socialButtonsBlockButton:
+                    "rounded-xl border-stone-200 text-stone-700",
+                  formButtonPrimary:
+                    "h-11 rounded-xl bg-black text-white hover:bg-black/90 text-sm normal-case",
+                  formFieldInput:
+                    "h-11 rounded-xl border-stone-200 focus:border-black focus:ring-black",
+                  formFieldLabel: "text-sm text-stone-700",
+                  footerAction: "hidden",
+                  footer: "hidden",
+                },
+              }}
+            />
+          </div>
         </section>
       </div>
     </main>
