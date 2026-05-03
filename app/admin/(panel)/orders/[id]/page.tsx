@@ -26,7 +26,12 @@ function money(value: number, currency = "NGN") {
 }
 
 function pill(status: string) {
-  if (status === "paid" || status === "fulfilled" || status === "delivered") {
+  if (
+    status === "paid" ||
+    status === "completed" ||
+    status === "fulfilled" ||
+    status === "delivered"
+  ) {
     return "bg-green-100 text-green-700";
   }
 

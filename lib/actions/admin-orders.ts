@@ -22,7 +22,7 @@ export async function markOrderAsFulfilled(orderId: string) {
     const { error: updateError } = await supabaseAdmin
         .from("orders")
         .update({
-            status: "processing",
+            status: "completed",
             fulfillment_status: "fulfilled",
             updated_at: new Date().toISOString(),
         })

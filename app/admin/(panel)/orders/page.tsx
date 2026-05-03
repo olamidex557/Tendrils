@@ -9,7 +9,12 @@ function formatMoney(amount: number, currency: string) {
 }
 
 function pill(status: string) {
-  if (status === "paid" || status === "delivered" || status === "fulfilled") {
+  if (
+    status === "paid" ||
+    status === "completed" ||
+    status === "delivered" ||
+    status === "fulfilled"
+  ) {
     return "bg-green-100 text-green-700";
   }
 
