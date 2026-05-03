@@ -8,8 +8,6 @@ import {
   ChevronRight,
   Minus,
   Plus,
-  ChevronLeft,
-  ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
@@ -58,12 +56,8 @@ type ProductDetailsViewProps = {
   };
 };
 
-const galleryFallback = [
-  "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80",
-];
+const productImageFallback =
+  "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80";
 
 export default function ProductDetailsView({ product }: ProductDetailsViewProps) {
   const addItem = useCartStore((state) => state.addItem);
@@ -91,11 +85,7 @@ export default function ProductDetailsView({ product }: ProductDetailsViewProps)
   const [activeTab, setActiveTab] = useState<"description" | "information">(
     "description"
   );
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-
-  const galleryImages = product.imageUrl
-    ? [product.imageUrl, ...galleryFallback.slice(0, 3)]
-    : galleryFallback;
+  const productImage = product.imageUrl ?? productImageFallback;
 
   const selectedMatrixRow =
     product.productType === "variable"
@@ -241,7 +231,7 @@ export default function ProductDetailsView({ product }: ProductDetailsViewProps)
       moqPricing: product.moqPricing ?? [],
       quantity,
       stockQuantity: effectiveStock,
-      image: product.imageUrl ?? galleryImages[0],
+      image: productImage,
       category: product.categoryName ?? undefined,
       selectedOptions:
         product.productType === "variable"
@@ -266,40 +256,10 @@ export default function ProductDetailsView({ product }: ProductDetailsViewProps)
         <div>
           <div className="relative overflow-hidden rounded-[1.5rem] border border-black/5 bg-stone-100 shadow-[0_18px_60px_rgba(20,20,20,0.08)]">
             <img
-              src={galleryImages[activeImageIndex]}
+              src={productImage}
               alt={product.name}
               className="h-[420px] w-full object-cover transition duration-500 md:h-[560px]"
             />
-
-            <button
-              type="button"
-              aria-label="Previous product image"
-              onClick={() =>
-                setActiveImageIndex((prev) =>
-                  prev === 0 ? galleryImages.length - 1 : prev - 1
-                )
-              }
-              className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-black shadow-lg shadow-black/10 backdrop-blur transition hover:bg-white"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-
-            <button
-              type="button"
-              aria-label="Next product image"
-              onClick={() =>
-                setActiveImageIndex((prev) =>
-                  prev === galleryImages.length - 1 ? 0 : prev + 1
-                )
-              }
-              className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-black shadow-lg shadow-black/10 backdrop-blur transition hover:bg-white"
-            >
-              <ChevronRightIcon className="h-5 w-5" />
-            </button>
-
-            <div className="absolute bottom-4 right-4 rounded-full border border-white/50 bg-white/90 px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm backdrop-blur">
-              {activeImageIndex + 1} / {galleryImages.length}
-            </div>
           </div>
         </div>
 
