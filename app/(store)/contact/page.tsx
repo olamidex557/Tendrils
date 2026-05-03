@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Mail, MapPin, MessageCircle, PackageSearch, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getStorefrontRuntimeSettings } from "@/lib/db/queries/storefront-settings";
+import { STORE_ADDRESS, STORE_SUPPORT_EMAIL } from "@/lib/storefront/contact-info";
 
 export async function generateMetadata() {
   const settings = await getStorefrontRuntimeSettings();
@@ -16,7 +17,7 @@ export async function generateMetadata() {
 export default async function ContactPage() {
   const settings = await getStorefrontRuntimeSettings();
   const email =
-    settings.supportEmail || settings.storeEmail || "support@ajikeplus.com";
+    settings.supportEmail || settings.storeEmail || STORE_SUPPORT_EMAIL;
   const phone = settings.storePhone || "+234 703 904 1074";
   const telHref = phone.replace(/[^\d+]/g, "");
 
@@ -61,8 +62,8 @@ export default async function ContactPage() {
               />
               <ContactMethod
                 icon={<MapPin className="h-5 w-5" />}
-                label="Location"
-                value="Nigeria"
+                label="Address"
+                value={STORE_ADDRESS}
               />
             </div>
 
@@ -123,7 +124,7 @@ function ContactMethod({
         {icon}
       </span>
       <span>
-        <span className="block text-xs font-medium uppercase tracking-[0.16em] text-stone-400">
+        <span className="block text-xs font-medium uppercase text-stone-400">
           {label}
         </span>
         <span className="mt-1 block break-all text-sm font-medium text-black">

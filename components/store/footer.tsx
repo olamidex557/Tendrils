@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowUpRight, Mail, Phone, ShieldCheck, Truck } from "lucide-react";
+import { ArrowUpRight, Mail, MapPin, Phone, ShieldCheck, Truck } from "lucide-react";
 import { FaFacebookF, FaTwitter, FaInstagram } from "react-icons/fa";
 import Logo from "@/components/shared/logo";
+import { STORE_ADDRESS, STORE_SUPPORT_EMAIL } from "@/lib/storefront/contact-info";
 
 type FooterProps = {
   storeName: string;
@@ -35,7 +36,7 @@ export default function Footer({
   storePhone,
   supportEmail,
 }: FooterProps) {
-  const email = supportEmail || storeEmail || "support@ajikeplus.com";
+  const email = supportEmail || storeEmail || STORE_SUPPORT_EMAIL;
   const phone = storePhone || "+234 703 904 1074";
 
   return (
@@ -91,6 +92,11 @@ export default function Footer({
               </h3>
 
               <div className="mt-4 space-y-3 text-sm leading-6 text-white/65">
+                <div className="flex items-start gap-3">
+                  <MapPin className="mt-1 h-4 w-4 shrink-0 text-[#9bf36b]" />
+                  <span>{STORE_ADDRESS}</span>
+                </div>
+
                 <a
                   href={`mailto:${email}`}
                   className="flex items-center gap-3 transition hover:text-white"
@@ -114,7 +120,7 @@ export default function Footer({
         <div className="flex flex-col gap-4 py-5 text-xs text-white/55 sm:flex-row sm:items-center sm:justify-between">
           <p>
             <strong className="font-semibold text-white/80">
-              © 2026 {storeName}
+              © 2026 OLABYTE TECH
             </strong>
           </p>
 

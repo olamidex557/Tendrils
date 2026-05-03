@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { STORE_SUPPORT_EMAIL } from "@/lib/storefront/contact-info";
 
 export type StorefrontRuntimeSettings = {
   storefrontLive: boolean;
@@ -29,9 +30,9 @@ export const getStorefrontRuntimeSettings = cache(
       storefrontLive: data?.storefront_live ?? true,
       maintenanceMode: data?.maintenance_mode ?? false,
       storeName: data?.store_name ?? "Ajike+",
-      storeEmail: data?.store_email ?? "info@ajikeplus.com",
+      storeEmail: data?.store_email ?? STORE_SUPPORT_EMAIL,
       storePhone: data?.store_phone ?? "+234 703 904 1074",
-      supportEmail: data?.support_email ?? null,
+      supportEmail: data?.support_email ?? STORE_SUPPORT_EMAIL,
     };
   }
 );

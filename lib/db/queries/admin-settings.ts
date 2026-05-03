@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { STORE_SUPPORT_EMAIL } from "@/lib/storefront/contact-info";
 
 export type AdminStoreSettings = {
   id: string;
@@ -37,9 +38,9 @@ export const getAdminStoreSettings = cache(
       return {
         id: "",
         storeName: "Ajike+",
-        storeEmail: "info@ajikeplus.com",
+        storeEmail: STORE_SUPPORT_EMAIL,
         storePhone: "+234 703 904 1074",
-        supportEmail: "support@ajikeplus.com",
+        supportEmail: STORE_SUPPORT_EMAIL,
         currency: "NGN",
         locale: "en-NG",
         timezone: "Africa/Lagos",

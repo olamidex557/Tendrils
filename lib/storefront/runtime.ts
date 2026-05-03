@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { STORE_SUPPORT_EMAIL } from "@/lib/storefront/contact-info";
 
 export type StoreRuntimeState = {
   storefrontLive: boolean;
@@ -23,7 +24,7 @@ export async function getStoreRuntimeState(): Promise<StoreRuntimeState> {
     storefrontLive: data?.storefront_live ?? true,
     maintenanceMode: data?.maintenance_mode ?? false,
     storeName: data?.store_name ?? "Ajike+",
-    supportEmail: data?.support_email ?? null,
+    supportEmail: data?.support_email ?? STORE_SUPPORT_EMAIL,
   };
 }
 
