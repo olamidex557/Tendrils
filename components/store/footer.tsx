@@ -41,11 +41,11 @@ export default function Footer({
   return (
     <footer className="mt-12 bg-[#111111] px-4 pt-10 text-white md:px-6 md:pt-14">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-10 border-b border-white/10 pb-10 lg:grid-cols-[1.1fr_1.9fr] lg:gap-14">
+        <div className="grid gap-8 border-b border-white/10 pb-8 md:gap-10 md:pb-10 lg:grid-cols-[1.1fr_1.9fr] lg:gap-14">
           <div className="max-w-md">
             <Link href="/" className="inline-flex items-center gap-4">
               <Logo size="md" className="rounded-full bg-white p-1" />
-              <span className="text-xl font-bold tracking-tight">
+              <span className="text-xl font-bold">
                 {storeName}
               </span>
             </Link>
@@ -80,13 +80,13 @@ export default function Footer({
             </div>
           </div>
 
-          <div className="grid gap-8 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 sm:gap-8">
             <FooterGroup title="Shop" links={shoppingLinks} />
 
             <FooterGroup title="Categories" links={categoryLinks} />
 
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
+            <div className="col-span-2 sm:col-span-1">
+              <h3 className="text-xs font-semibold uppercase text-white">
                 Contact
               </h3>
 
@@ -147,18 +147,18 @@ function FooterGroup({
 }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
+      <h3 className="text-xs font-semibold uppercase text-white">
         {title}
       </h3>
 
-      <div className="mt-4 grid gap-2 text-sm text-white/65">
+      <div className="mt-4 grid gap-2 text-sm leading-5 text-white/65">
         {links.map(([label, href]) => (
           <Link
             key={href}
             href={href}
-            className="group inline-flex w-fit items-center gap-2 transition hover:text-white"
+            className="group inline-flex w-fit min-w-0 items-center gap-1.5 transition hover:text-white"
           >
-            <span>{label}</span>
+            <span className="break-words">{label}</span>
             <ArrowUpRight className="h-3.5 w-3.5 opacity-0 transition group-hover:opacity-100" />
           </Link>
         ))}

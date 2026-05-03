@@ -61,20 +61,23 @@ export default async function AdminDashboardPage() {
   ];
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-[1.5rem] border border-black/5 bg-white p-5 shadow-sm">
+    <section className="space-y-4 sm:space-y-6">
+      <div className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:rounded-[1.5rem] sm:p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm text-stone-500">Overview</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-black">
+            <h1 className="mt-2 text-2xl font-semibold text-black sm:text-3xl">
               Dashboard
             </h1>
-            <p className="mt-2 text-sm text-stone-600">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">
               Store performance, recent orders, and quick admin actions.
             </p>
           </div>
 
-          <Button asChild className="rounded-full bg-black px-5 text-white hover:bg-black/90">
+          <Button
+            asChild
+            className="h-10 w-full rounded-full bg-black px-5 text-white hover:bg-black/90 sm:w-auto"
+          >
             <Link href="/admin/products/new">
               <Plus className="mr-2 h-4 w-4" />
               Add Product
@@ -83,25 +86,25 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 2xl:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
 
           return (
             <div
               key={stat.title}
-              className="rounded-[1.5rem] border border-black/5 bg-white p-5 shadow-sm"
+              className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:rounded-[1.5rem] sm:p-5"
             >
               <div className="flex items-start justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-stone-500">{stat.title}</p>
-                  <h2 className="mt-2 text-3xl font-semibold tracking-tight text-black">
+                  <h2 className="mt-2 break-words text-2xl font-semibold text-black sm:text-3xl">
                     {stat.value}
                   </h2>
                   <p className="mt-2 text-sm text-stone-500">{stat.change}</p>
                 </div>
 
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100 text-black">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stone-100 text-black sm:h-11 sm:w-11">
                   <Icon className="h-5 w-5" />
                 </div>
               </div>
@@ -111,9 +114,11 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-[1.5rem] border border-black/5 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:rounded-[1.5rem] sm:p-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-black">Recent Orders</h3>
+            <h3 className="text-lg font-semibold text-black sm:text-xl">
+              Recent Orders
+            </h3>
             <Link
               href="/admin/orders"
               className="text-sm font-medium text-stone-500 transition hover:text-black"
@@ -122,7 +127,46 @@ export default async function AdminDashboardPage() {
             </Link>
           </div>
 
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-5 space-y-3 md:hidden">
+            {dashboard.recentOrders.length === 0 ? (
+              <div className="rounded-2xl bg-stone-50 p-4 text-sm text-stone-500">
+                No recent orders yet.
+              </div>
+            ) : (
+              dashboard.recentOrders.map((order) => (
+                <Link
+                  key={order.id}
+                  href={`/admin/orders/${order.id}`}
+                  className="block rounded-2xl border border-stone-100 bg-stone-50 p-4 transition hover:border-black/10"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-black">
+                        {order.orderNumber}
+                      </p>
+                      <p className="mt-1 truncate text-sm text-stone-600">
+                        {order.customerName ?? "Guest Customer"}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium capitalize ${pill(
+                        order.paymentStatus
+                      )}`}
+                    >
+                      {order.paymentStatus}
+                    </span>
+                  </div>
+
+                  <p className="mt-3 text-sm font-semibold text-black">
+                    {money(order.total)}
+                  </p>
+                </Link>
+              ))
+            )}
+          </div>
+
+          <div className="mt-6 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[520px] text-left">
               <thead>
                 <tr className="border-b border-stone-200 text-sm text-stone-500">
@@ -178,8 +222,10 @@ export default async function AdminDashboardPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-[1.5rem] border border-black/5 bg-white p-6 shadow-sm">
-            <h3 className="text-xl font-semibold text-black">Store Health</h3>
+          <div className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:rounded-[1.5rem] sm:p-6">
+            <h3 className="text-lg font-semibold text-black sm:text-xl">
+              Store Health
+            </h3>
             <div className="mt-5 space-y-4">
               <HealthRow
                 label="Inventory status"
@@ -200,9 +246,11 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-black/5 bg-white p-6 shadow-sm">
-            <h3 className="text-xl font-semibold text-black">Quick Actions</h3>
-            <div className="mt-5 grid gap-3">
+          <div className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:rounded-[1.5rem] sm:p-6">
+            <h3 className="text-lg font-semibold text-black sm:text-xl">
+              Quick Actions
+            </h3>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
               <QuickAction href="/admin/products/new" label="Add New Product" />
               <QuickAction href="/admin/orders" label="Review Orders" />
               <QuickAction href="/admin/banners" label="Update Homepage Banner" />
@@ -217,9 +265,9 @@ export default async function AdminDashboardPage() {
 
 function HealthRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-stone-50 px-4 py-3">
-      <span className="text-sm text-stone-600">{label}</span>
-      <span className="text-sm font-semibold text-black">{value}</span>
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-stone-50 px-4 py-3">
+      <span className="min-w-0 text-sm text-stone-600">{label}</span>
+      <span className="shrink-0 text-sm font-semibold text-black">{value}</span>
     </div>
   );
 }
@@ -228,10 +276,10 @@ function QuickAction({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-700 transition hover:border-black/20 hover:text-black"
+      className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-medium text-stone-700 transition hover:border-black/20 hover:text-black"
     >
-      <span>{label}</span>
-      <ArrowUpRight className="h-4 w-4" />
+      <span className="min-w-0">{label}</span>
+      <ArrowUpRight className="h-4 w-4 shrink-0" />
     </Link>
   );
 }
