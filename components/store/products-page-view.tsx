@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowUpDown, SlidersHorizontal, RotateCcw } from "lucide-react";
 import {
   Sheet,
@@ -18,6 +19,7 @@ import type { StorefrontProduct } from "@/lib/db/queries/storefront";
 type ProductsPageViewProps = {
   products: StorefrontProduct[];
   categoryOptions: string[];
+  initialSearch?: string;
 };
 
 const availabilityOptions = ["All", "In Stock", "Out of Stock"];
@@ -32,11 +34,18 @@ const sortOptions = [
 export default function ProductsPageView({
   products,
   categoryOptions,
+  initialSearch = "",
 }: ProductsPageViewProps) {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedAvailability, setSelectedAvailability] = useState("All");
   const [maxPrice, setMaxPrice] = useState(500000);
   const [sortBy, setSortBy] = useState("default");
+  const [searchTerm, setSearchTerm] = useState(initialSearch.trim());
+
+  useEffect(() => {
+    setSearchTerm(initialSearch.trim());
+  }, [initialSearch]);
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
@@ -46,6 +55,25 @@ export default function ProductsPageView({
         (product) =>
           (product.categoryName ?? "").toLowerCase() ===
           selectedCategory.toLowerCase()
+      );
+    }
+
+    if (searchTerm) {
+      const normalizedSearch = searchTerm.toLowerCase();
+
+      result = result.filter((product) =>
+        [
+          product.name,
+          product.shortDescription,
+          product.description,
+          product.categoryName,
+          product.categorySlug,
+          product.slug,
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLowerCase().includes(normalizedSearch)
+          )
       );
     }
 
@@ -77,16 +105,26 @@ export default function ProductsPageView({
     }
 
     return result;
-  }, [products, selectedCategory, selectedAvailability, maxPrice, sortBy]);
+  }, [
+    products,
+    searchTerm,
+    selectedCategory,
+    selectedAvailability,
+    maxPrice,
+    sortBy,
+  ]);
 
   function resetFilters() {
     setSelectedCategory("All");
     setSelectedAvailability("All");
     setMaxPrice(500000);
     setSortBy("default");
+    setSearchTerm("");
+    router.replace("/products", { scroll: false });
   }
 
   const activeFilterCount =
+    Number(Boolean(searchTerm)) +
     Number(selectedCategory !== "All") +
     Number(selectedAvailability !== "All") +
     Number(maxPrice !== 500000);
@@ -109,6 +147,12 @@ export default function ProductsPageView({
 
         <div className="pb-24 lg:pb-0">
           <div className="mb-4 flex flex-wrap gap-2 lg:hidden">
+            {searchTerm ? (
+              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
+                Search: {searchTerm}
+              </span>
+            ) : null}
+
             {selectedCategory !== "All" ? (
               <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
                 {selectedCategory}
@@ -127,6 +171,24 @@ export default function ProductsPageView({
               </span>
             ) : null}
           </div>
+
+          {searchTerm ? (
+            <div className="mb-6 flex flex-col gap-3 rounded-[1.25rem] border border-stone-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-stone-600">
+                Search results for{" "}
+                <span className="font-semibold text-black">{searchTerm}</span>
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={resetFilters}
+                className="h-10 rounded-full"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Clear Search
+              </Button>
+            </div>
+          ) : null}
 
           <ProductsGrid
             products={filteredProducts}

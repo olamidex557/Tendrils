@@ -3,7 +3,14 @@ import BrandStrip from "@/components/store/brand-strip";
 import ProductsPageView from "@/components/store/products-page-view";
 import { getPublishedProducts, getVisibleCategories } from "@/lib/db/queries/storefront";
 
-export default async function ProductsPage() {
+type ProductsPageProps = {
+  searchParams: Promise<{ search?: string | string[] }>;
+};
+
+export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+  const search = (await searchParams).search;
+  const initialSearch = Array.isArray(search) ? search[0] ?? "" : search ?? "";
+
   const [products, categories] = await Promise.all([
     getPublishedProducts(),
     getVisibleCategories(),
@@ -17,6 +24,7 @@ export default async function ProductsPage() {
       <ProductsPageView
         products={products}
         categoryOptions={categoryOptions}
+        initialSearch={initialSearch}
       />
       <BrandStrip />
     </main>

@@ -69,14 +69,7 @@ export default function Navbar() {
                   </div>
 
                   <div className="px-6 pt-5">
-                    <div className="relative">
-                      <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-                      <Input
-                        type="search"
-                        placeholder="Search products in Tendrils"
-                        className="h-11 rounded-full border-black/10 bg-stone-50 pl-10 pr-4 shadow-none focus-visible:ring-1 focus-visible:ring-black/20"
-                      />
-                    </div>
+                    <SearchForm />
                   </div>
 
                   <nav className="flex flex-1 flex-col gap-2 px-4 py-5">
@@ -143,14 +136,7 @@ export default function Navbar() {
           </div>
 
           <div className="hidden flex-1 md:block">
-            <div className="relative mx-auto max-w-md lg:max-w-lg">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-              <Input
-                type="search"
-                placeholder="Search products in Tendrils"
-                className="h-11 rounded-full border-black/10 bg-stone-50 pl-10 pr-4 shadow-none focus-visible:ring-1 focus-visible:ring-black/20"
-              />
-            </div>
+            <SearchForm className="mx-auto max-w-md lg:max-w-lg" />
           </div>
 
           <nav className="hidden items-center gap-6 md:flex">
@@ -201,16 +187,25 @@ export default function Navbar() {
         </div>
 
         <div className="mt-4 md:hidden">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-            <Input
-              type="search"
-              placeholder="Search products in Tendrils"
-              className="h-11 rounded-full border-black/10 bg-stone-50 pl-10 pr-4 shadow-none focus-visible:ring-1 focus-visible:ring-black/20"
-            />
-          </div>
+          <SearchForm />
         </div>
       </div>
     </header>
+  );
+}
+
+function SearchForm({ className = "" }: { className?: string }) {
+  return (
+    <form action="/products" role="search" className={className}>
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+        <Input
+          name="search"
+          type="search"
+          placeholder="Search products in Tendrils"
+          className="h-11 rounded-full border-black/10 bg-stone-50 pl-10 pr-4 shadow-none focus-visible:ring-1 focus-visible:ring-black/20"
+        />
+      </div>
+    </form>
   );
 }
