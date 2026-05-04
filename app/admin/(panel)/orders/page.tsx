@@ -2,6 +2,10 @@ import Link from "next/link";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAdminOrders } from "@/lib/db/queries/admin-commerce";
+import {
+  getAdminPaymentStatusLabel,
+  getAdminPaymentStatusTone,
+} from "@/lib/payments/admin-status";
 
 function formatMoney(amount: number, currency: string) {
   const symbol = currency === "NGN" ? "₦" : `${currency} `;
@@ -110,10 +114,16 @@ export default async function AdminOrdersPage() {
                     <td className="px-6 py-5">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${pill(
-                          order.paymentStatus
+                          getAdminPaymentStatusTone(
+                            order.paymentStatus,
+                            order.createdAt
+                          )
                         )}`}
                       >
-                        {formatStatus(order.paymentStatus)}
+                        {getAdminPaymentStatusLabel(
+                          order.paymentStatus,
+                          order.createdAt
+                        )}
                       </span>
                     </td>
 

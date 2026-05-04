@@ -14,6 +14,17 @@ function isUuid(value: string | null | undefined) {
   );
 }
 
+function isFailedPaystackStatus(status: string | null | undefined) {
+  return [
+    "abandoned",
+    "cancelled",
+    "canceled",
+    "declined",
+    "failed",
+    "reversed",
+  ].includes(String(status ?? "").toLowerCase());
+}
+
 async function deductStock(orderId: string) {
   const { data: items, error } = await supabaseAdmin
     .from("order_items")
@@ -149,7 +160,12 @@ export async function POST(req: Request) {
 
     console.log("PAYSTACK WEBHOOK HIT:", event.event, event.data?.reference);
 
-    if (event.event !== "charge.success") {
+    const paystackStatus = String(event.data?.status ?? "").toLowerCase();
+    const isSuccessfulCharge = event.event === "charge.success";
+    const isFailedCharge =
+      event.event === "charge.failed" || isFailedPaystackStatus(paystackStatus);
+
+    if (!isSuccessfulCharge && !isFailedCharge) {
       return NextResponse.json({ received: true, ignored: true });
     }
 
@@ -183,6 +199,40 @@ export async function POST(req: Request) {
 
     if (!order) {
       return NextResponse.json({ error: "Order not found." }, { status: 404 });
+    }
+
+    if (!isSuccessfulCharge) {
+      const { error: paymentError } = await supabaseAdmin.from("payments").upsert(
+        {
+          order_id: order.id,
+          reference,
+          status: "failed",
+          provider: "paystack",
+          amount: Number(event.data?.amount ?? 0) / 100,
+          paid_at: null,
+          metadata: {
+            paystack_status: paystackStatus || "failed",
+            event: event.event ?? null,
+          },
+        },
+        { onConflict: "reference" }
+      );
+
+      if (paymentError) throw new Error(paymentError.message);
+
+      const { error: updateOrderError } = await supabaseAdmin
+        .from("orders")
+        .update({
+          status: "failed",
+          payment_status: "failed",
+          fulfillment_status: "unfulfilled",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", order.id);
+
+      if (updateOrderError) throw new Error(updateOrderError.message);
+
+      return NextResponse.json({ success: true, source: "failed-charge" });
     }
 
     if (order.payment_status === "paid") {

@@ -15,6 +15,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { getAdminOrderById } from "@/lib/db/queries/admin-order-details";
 import { markOrderAsFulfilled } from "@/lib/actions/admin-orders";
+import {
+  getAdminPaymentStatusLabel,
+  getAdminPaymentStatusTone,
+} from "@/lib/payments/admin-status";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -63,6 +67,14 @@ export default async function AdminOrderDetailsPage({ params }: PageProps) {
   }
 
   const orderDetails = order;
+  const paymentLabel = getAdminPaymentStatusLabel(
+    orderDetails.paymentStatus,
+    orderDetails.createdAt
+  );
+  const paymentTone = getAdminPaymentStatusTone(
+    orderDetails.paymentStatus,
+    orderDetails.createdAt
+  );
 
   async function fulfillAction() {
     "use server";
@@ -111,8 +123,8 @@ export default async function AdminOrderDetailsPage({ params }: PageProps) {
             status={orderDetails.status}
           />
           <StatusPill
-            label={`Payment: ${formatStatus(orderDetails.paymentStatus)}`}
-            status={orderDetails.paymentStatus}
+            label={`Payment: ${paymentLabel}`}
+            status={paymentTone}
           />
           <StatusPill
             label={`Fulfillment: ${formatStatus(
@@ -280,7 +292,7 @@ export default async function AdminOrderDetailsPage({ params }: PageProps) {
             <div className="space-y-3 text-sm text-stone-600">
               <p>• Order status: {formatStatus(orderDetails.status)}</p>
               <p>
-                • Payment status: {formatStatus(orderDetails.paymentStatus)}
+                • Payment status: {paymentLabel}
               </p>
               <p>
                 • Fulfillment status:{" "}

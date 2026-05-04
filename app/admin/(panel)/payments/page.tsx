@@ -8,8 +8,18 @@ function money(amount: number, currency: string) {
 function pill(status: string) {
   if (status === "success") return "bg-green-100 text-green-700";
   if (status === "pending") return "bg-amber-100 text-amber-700";
-  if (status === "failed") return "bg-red-100 text-red-700";
+  if (["abandoned", "amount_mismatch", "failed"].includes(status)) {
+    return "bg-red-100 text-red-700";
+  }
   return "bg-stone-100 text-stone-700";
+}
+
+function label(payment: { status: string; paystackStatus: string | null }) {
+  if (payment.status === "failed" && payment.paystackStatus === "abandoned") {
+    return "Payment abandoned";
+  }
+
+  return payment.status.replaceAll("_", " ");
 }
 
 export default async function AdminPaymentsPage() {
@@ -74,8 +84,8 @@ export default async function AdminPaymentsPage() {
                     </td>
 
                     <td className="px-6 py-5">
-                      <span className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${pill(payment.status)}`}>
-                        {payment.status}
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${pill(payment.paystackStatus ?? payment.status)}`}>
+                        {label(payment)}
                       </span>
                     </td>
 

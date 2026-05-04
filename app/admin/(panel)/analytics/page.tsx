@@ -30,6 +30,10 @@ export default async function AdminAnalyticsPage() {
         <MetricCard label="Paid Orders" value={String(analytics.paidOrders)} />
         <MetricCard label="Pending Orders" value={String(analytics.pendingOrders)} />
         <MetricCard
+          label="Payment Abandoned"
+          value={String(analytics.abandonedPayments)}
+        />
+        <MetricCard
           label="Successful Payments"
           value={String(analytics.successfulPayments)}
         />

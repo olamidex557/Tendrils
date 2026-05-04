@@ -24,6 +24,17 @@ function safeNumber(value: unknown, fallback = 0) {
   return Number.isFinite(num) ? num : fallback;
 }
 
+function isFailedPaystackStatus(status: string | null | undefined) {
+  return [
+    "abandoned",
+    "cancelled",
+    "canceled",
+    "declined",
+    "failed",
+    "reversed",
+  ].includes(String(status ?? "").toLowerCase());
+}
+
 export async function POST(req: Request) {
   try {
     const rawBody = await req.text();
@@ -47,7 +58,12 @@ export async function POST(req: Request) {
 
     const payload = JSON.parse(rawBody) as PaystackWebhookEvent;
 
-    if (payload.event !== "charge.success") {
+    const paystackStatus = String(payload.data?.status ?? "").toLowerCase();
+    const isSuccessfulCharge = payload.event === "charge.success";
+    const isFailedCharge =
+      payload.event === "charge.failed" || isFailedPaystackStatus(paystackStatus);
+
+    if (!isSuccessfulCharge && !isFailedCharge) {
       return NextResponse.json({ received: true });
     }
 
@@ -93,6 +109,55 @@ export async function POST(req: Request) {
     const paidAt = payload.data?.paid_at ?? new Date().toISOString();
     const currency = payload.data?.currency ?? "NGN";
     const metadata = payload.data?.metadata ?? null;
+
+    if (!isSuccessfulCharge) {
+      const { error: paymentUpsertError } = await supabaseAdmin
+        .from("payments")
+        .upsert(
+          {
+            order_id: order.id,
+            customer_id: order.customer_id,
+            provider: "paystack",
+            reference,
+            amount,
+            currency,
+            status: "failed",
+            paid_at: null,
+            metadata: {
+              ...(metadata ?? {}),
+              paystack_status: paystackStatus || "failed",
+              event: payload.event ?? null,
+            },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "reference" }
+        );
+
+      if (paymentUpsertError) {
+        return NextResponse.json(
+          { error: paymentUpsertError.message },
+          { status: 500 }
+        );
+      }
+
+      const { error: orderUpdateError } = await supabaseAdmin
+        .from("orders")
+        .update({
+          payment_status: "failed",
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", order.id);
+
+      if (orderUpdateError) {
+        return NextResponse.json(
+          { error: orderUpdateError.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ received: true, source: "failed-charge" });
+    }
 
     const { error: paymentUpsertError } = await supabaseAdmin
       .from("payments")

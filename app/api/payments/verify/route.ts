@@ -14,6 +14,17 @@ function toKobo(amount: number) {
   return Math.round(Number(amount || 0) * 100);
 }
 
+function isFailedPaystackStatus(status: string | null | undefined) {
+  return [
+    "abandoned",
+    "cancelled",
+    "canceled",
+    "declined",
+    "failed",
+    "reversed",
+  ].includes(String(status ?? "").toLowerCase());
+}
+
 async function deductStock(orderId: string) {
   const { data: items, error } = await supabaseAdmin
     .from("order_items")
@@ -130,9 +141,47 @@ export async function GET(req: Request) {
       );
     }
 
-    if (verifyData?.data?.status !== "success") {
+    const paystackStatus = String(verifyData?.data?.status ?? "pending").toLowerCase();
+
+    if (paystackStatus !== "success") {
+      if (isFailedPaystackStatus(paystackStatus)) {
+        await supabaseAdmin.from("payments").upsert(
+          {
+            order_id: order.id,
+            reference,
+            status: "failed",
+            provider: "paystack",
+            amount: Number(verifyData?.data?.amount ?? 0) / 100,
+            paid_at: null,
+            metadata: {
+              paystack_status: paystackStatus,
+              message: verifyData?.message ?? null,
+            },
+          },
+          { onConflict: "reference" }
+        );
+
+        const { error: failedOrderError } = await supabaseAdmin
+          .from("orders")
+          .update({
+            status: "failed",
+            payment_status: "failed",
+            fulfillment_status: "unfulfilled",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", order.id);
+
+        if (failedOrderError) throw new Error(failedOrderError.message);
+      }
+
       return NextResponse.json(
-        { error: "Payment is not successful yet." },
+        {
+          error:
+            paystackStatus === "abandoned"
+              ? "Payment was abandoned."
+              : "Payment is not successful yet.",
+          paystackStatus,
+        },
         { status: 409 }
       );
     }

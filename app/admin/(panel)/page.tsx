@@ -9,6 +9,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAdminDashboardStats } from "@/lib/db/queries/admin-dashboard";
+import {
+  getAdminPaymentStatusLabel,
+  getAdminPaymentStatusTone,
+} from "@/lib/payments/admin-status";
 
 function money(value: number) {
   return `₦${Number(value).toLocaleString()}`;
@@ -151,10 +155,16 @@ export default async function AdminDashboardPage() {
 
                     <span
                       className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium capitalize ${pill(
-                        order.paymentStatus
+                        getAdminPaymentStatusTone(
+                          order.paymentStatus,
+                          order.createdAt
+                        )
                       )}`}
                     >
-                      {order.paymentStatus}
+                      {getAdminPaymentStatusLabel(
+                        order.paymentStatus,
+                        order.createdAt
+                      )}
                     </span>
                   </div>
 
@@ -207,10 +217,16 @@ export default async function AdminDashboardPage() {
                       <td className="py-4">
                         <span
                           className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${pill(
-                            order.paymentStatus
+                            getAdminPaymentStatusTone(
+                              order.paymentStatus,
+                              order.createdAt
+                            )
                           )}`}
                         >
-                          {order.paymentStatus}
+                          {getAdminPaymentStatusLabel(
+                            order.paymentStatus,
+                            order.createdAt
+                          )}
                         </span>
                       </td>
                     </tr>

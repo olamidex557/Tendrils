@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { isStalePendingPayment } from "@/lib/payments/admin-status";
 
 export type AdminOrderListItem = {
   id: string;
@@ -35,6 +36,7 @@ export type AdminPaymentListItem = {
   orderNumber: string | null;
   customerName: string | null;
   customerEmail: string | null;
+  paystackStatus: string | null;
   paidAt: string | null;
   createdAt: string | null;
 };
@@ -49,6 +51,7 @@ export const getAdminPayments = cache(
         provider,
         status,
         amount,
+        metadata,
         paid_at,
         created_at,
         orders (
@@ -74,6 +77,10 @@ export const getAdminPayments = cache(
       orderNumber: payment.orders?.order_number ?? null,
       customerName: payment.orders?.shipping_name ?? null,
       customerEmail: payment.orders?.shipping_email ?? null,
+      paystackStatus:
+        typeof payment.metadata?.paystack_status === "string"
+          ? payment.metadata.paystack_status
+          : null,
       paidAt: payment.paid_at ?? null,
       createdAt: payment.created_at ?? null,
     }));
@@ -171,6 +178,7 @@ export type AdminAnalyticsSnapshot = {
   totalOrders: number;
   paidOrders: number;
   pendingOrders: number;
+  abandonedPayments: number;
   fulfilledOrders: number;
   averageOrderValue: number;
   totalCustomers: number;
@@ -257,7 +265,12 @@ export const getAdminAnalyticsSnapshot = cache(
   totalOrders: orders.length,
   paidOrders: paidOrders.length,
   pendingOrders: orders.filter(
-    (order: any) => order.payment_status === "pending"
+    (order: any) =>
+      order.payment_status === "pending" &&
+      !isStalePendingPayment(order.payment_status, order.created_at)
+  ).length,
+  abandonedPayments: orders.filter((order: any) =>
+    isStalePendingPayment(order.payment_status, order.created_at)
   ).length,
   fulfilledOrders: orders.filter(
     (order: any) => order.fulfillment_status === "fulfilled"

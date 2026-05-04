@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { isStalePendingPayment } from "@/lib/payments/admin-status";
 
 export type AdminProductListItem = {
   id: string;
@@ -55,7 +56,6 @@ export async function getAdminDashboardStats() {
     ordersResult,
     todayOrdersResult,
     paidOrdersResult,
-    pendingOrdersResult,
     completedOrdersResult,
     recentOrdersResult,
   ] = await Promise.all([
@@ -88,11 +88,6 @@ export async function getAdminDashboardStats() {
     supabaseAdmin
       .from("orders")
       .select("id", { count: "exact", head: true })
-      .eq("payment_status", "pending"),
-
-    supabaseAdmin
-      .from("orders")
-      .select("id", { count: "exact", head: true })
       .eq("fulfillment_status", "fulfilled"),
 
     supabaseAdmin
@@ -117,7 +112,6 @@ export async function getAdminDashboardStats() {
     ordersResult,
     todayOrdersResult,
     paidOrdersResult,
-    pendingOrdersResult,
     completedOrdersResult,
     recentOrdersResult,
   ];
@@ -162,7 +156,11 @@ export async function getAdminDashboardStats() {
     totalOrders: orders.length,
     todayOrders: todayOrdersResult.count ?? 0,
     paidOrders: paidOrdersResult.count ?? 0,
-    pendingOrders: pendingOrdersResult.count ?? 0,
+    pendingOrders: orders.filter(
+      (order: any) =>
+        order.payment_status === "pending" &&
+        !isStalePendingPayment(order.payment_status, order.created_at)
+    ).length,
     completedOrders: completedOrdersResult.count ?? 0,
     totalRevenue,
     todayRevenue,
@@ -176,6 +174,7 @@ export async function getAdminDashboardStats() {
           ? Number(order.total)
           : Number(order.total_amount ?? 0),
       paymentStatus: order.payment_status ?? "pending",
+      createdAt: order.created_at,
     })),
   };
 }
