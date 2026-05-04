@@ -1,5 +1,6 @@
 "use server";
 
+import { randomInt } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { assertStorefrontAvailableForCheckout } from "@/lib/storefront/runtime";
 
@@ -8,6 +9,7 @@ type CheckoutInput = {
   email: string;
   phone: string;
   address: string;
+  fulfillmentMethod?: "delivery" | "pickup";
   shippingZoneId?: string | null;
   shippingZoneName?: string | null;
   shippingFee?: number;
@@ -26,8 +28,39 @@ type CheckoutInput = {
   }[];
 };
 
-function generateOrderNumber() {
-  return `AJK-${Date.now()}`;
+const ORDER_CODE_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
+const ORDER_CODE_LETTERS = "abcdefghijklmnopqrstuvwxyz";
+
+function generateOrderNumberCandidate(): string {
+  let code = "";
+  let letterCount = 0;
+
+  for (let index = 0; index < 5; index += 1) {
+    const character =
+      ORDER_CODE_ALPHABET[randomInt(ORDER_CODE_ALPHABET.length)];
+
+    code += character;
+    if (ORDER_CODE_LETTERS.includes(character)) letterCount += 1;
+  }
+
+  return letterCount >= 2 ? code : generateOrderNumberCandidate();
+}
+
+async function generateOrderNumber() {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const candidate = generateOrderNumberCandidate();
+
+    const { data, error } = await supabaseAdmin
+      .from("orders")
+      .select("id")
+      .eq("order_number", candidate)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) return candidate;
+  }
+
+  throw new Error("Unable to generate a unique order number. Please try again.");
 }
 
 function isUuid(value: string | null | undefined) {
@@ -45,7 +78,17 @@ export async function createCheckoutSession(input: CheckoutInput) {
   if (!input.fullName.trim()) throw new Error("Full name is required.");
   if (!input.email.trim()) throw new Error("Email is required.");
   if (!input.phone.trim()) throw new Error("Phone number is required.");
-  if (!input.address.trim()) throw new Error("Address is required.");
+
+  const fulfillmentMethod = input.fulfillmentMethod ?? "delivery";
+
+  if (!["delivery", "pickup"].includes(fulfillmentMethod)) {
+    throw new Error("Select a valid fulfillment option.");
+  }
+
+  if (fulfillmentMethod === "delivery" && !input.address.trim()) {
+    throw new Error("Address is required.");
+  }
+
   if (!process.env.PAYSTACK_SECRET_KEY) {
     throw new Error("PAYSTACK_SECRET_KEY is missing.");
   }
@@ -56,7 +99,10 @@ export async function createCheckoutSession(input: CheckoutInput) {
   let verifiedShippingFee = Number(input.shippingFee ?? 0);
   let verifiedShippingZoneName = input.shippingZoneName?.trim() || null;
 
-  if (input.shippingZoneId && isUuid(input.shippingZoneId)) {
+  if (fulfillmentMethod === "pickup") {
+    verifiedShippingFee = 0;
+    verifiedShippingZoneName = null;
+  } else if (input.shippingZoneId && isUuid(input.shippingZoneId)) {
     const { data: zone, error: zoneError } = await supabaseAdmin
       .from("shipping_zones")
       .select("name, amount, is_active")
@@ -117,7 +163,7 @@ export async function createCheckoutSession(input: CheckoutInput) {
     }
   }
 
-  const orderNumber = generateOrderNumber();
+  const orderNumber = await generateOrderNumber();
 
   let customerId: string | null = null;
 
@@ -166,9 +212,12 @@ export async function createCheckoutSession(input: CheckoutInput) {
   const discountAmount = 0;
   const totalAmount = subtotal + shippingFee - discountAmount;
 
-  const shippingAddress = verifiedShippingZoneName
-    ? `${input.address.trim()}\n\nDelivery Area: ${verifiedShippingZoneName}`
-    : input.address.trim();
+  const shippingAddress =
+    fulfillmentMethod === "pickup"
+      ? "Pickup"
+      : verifiedShippingZoneName
+        ? `${input.address.trim()}\n\nDelivery Area: ${verifiedShippingZoneName}`
+        : input.address.trim();
 
   const { data: order, error: orderError } = await supabaseAdmin
     .from("orders")
@@ -178,6 +227,7 @@ export async function createCheckoutSession(input: CheckoutInput) {
       status: "pending",
       payment_status: "pending",
       fulfillment_status: "unfulfilled",
+      fulfillment_method: fulfillmentMethod,
       currency: "NGN",
       subtotal,
       shipping_fee: shippingFee,
@@ -235,8 +285,10 @@ export async function createCheckoutSession(input: CheckoutInput) {
         metadata: {
           order_id: order.id,
           order_number: orderNumber,
+          fulfillment_method: fulfillmentMethod,
           customer_email: input.email.trim(),
-          shipping_zone_id: input.shippingZoneId ?? null,
+          shipping_zone_id:
+            fulfillmentMethod === "delivery" ? input.shippingZoneId ?? null : null,
           shipping_zone_name: verifiedShippingZoneName,
           shipping_fee: shippingFee,
         },

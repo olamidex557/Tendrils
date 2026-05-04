@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, CreditCard, Lock, Truck } from "lucide-react";
+import { ArrowLeft, CreditCard, Lock, Store, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
 import { createCheckoutSession } from "@/lib/actions/checkout";
@@ -13,6 +13,8 @@ type ShippingZone = {
   amount: number;
 };
 
+type FulfillmentMethod = "delivery" | "pickup";
+
 export default function CheckoutPage() {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
@@ -21,6 +23,8 @@ export default function CheckoutPage() {
 
   const [shippingZones, setShippingZones] = useState<ShippingZone[]>([]);
   const [selectedShippingZoneId, setSelectedShippingZoneId] = useState("");
+  const [fulfillmentMethod, setFulfillmentMethod] =
+    useState<FulfillmentMethod>("delivery");
 
   const [form, setForm] = useState({
     fullName: "",
@@ -60,9 +64,12 @@ export default function CheckoutPage() {
     (zone) => zone.id === selectedShippingZoneId
   );
 
-  const shippingFee = selectedShippingZone
-    ? Number(selectedShippingZone.amount)
-    : 0;
+  const shippingFee =
+    fulfillmentMethod === "pickup"
+      ? 0
+      : selectedShippingZone
+        ? Number(selectedShippingZone.amount)
+        : 0;
 
   const total = subtotal + shippingFee;
 
@@ -82,7 +89,11 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (shippingZones.length > 0 && !selectedShippingZone) {
+    if (
+      fulfillmentMethod === "delivery" &&
+      shippingZones.length > 0 &&
+      !selectedShippingZone
+    ) {
       setMessage("Please select a delivery area.");
       return;
     }
@@ -93,9 +104,16 @@ export default function CheckoutPage() {
           fullName: form.fullName.trim(),
           email: form.email.trim(),
           phone: form.phone.trim(),
-          address: form.address.trim(),
-          shippingZoneId: selectedShippingZone?.id ?? null,
-          shippingZoneName: selectedShippingZone?.name ?? null,
+          address: fulfillmentMethod === "pickup" ? "" : form.address.trim(),
+          fulfillmentMethod,
+          shippingZoneId:
+            fulfillmentMethod === "delivery"
+              ? selectedShippingZone?.id ?? null
+              : null,
+          shippingZoneName:
+            fulfillmentMethod === "delivery"
+              ? selectedShippingZone?.name ?? null
+              : null,
           shippingFee,
           items: cartItems.map((item) => ({
             id: item.id,
@@ -178,15 +196,49 @@ export default function CheckoutPage() {
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-black">
-                  Shipping Information
+                  Fulfillment
                 </h2>
                 <p className="text-sm text-stone-500">
-                  Enter customer and delivery details.
+                  Choose pickup or delivery and add customer details.
                 </p>
               </div>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-black">
+                  Fulfillment Option
+                </label>
+                <div className="grid grid-cols-2 gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-1">
+                  <button
+                    type="button"
+                    aria-pressed={fulfillmentMethod === "delivery"}
+                    onClick={() => setFulfillmentMethod("delivery")}
+                    className={`flex h-12 items-center justify-center gap-2 rounded-[0.85rem] text-sm font-medium transition ${
+                      fulfillmentMethod === "delivery"
+                        ? "bg-black text-white shadow-sm"
+                        : "text-stone-600 hover:bg-white hover:text-black"
+                    }`}
+                  >
+                    <Truck className="h-4 w-4" />
+                    Delivery
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={fulfillmentMethod === "pickup"}
+                    onClick={() => setFulfillmentMethod("pickup")}
+                    className={`flex h-12 items-center justify-center gap-2 rounded-[0.85rem] text-sm font-medium transition ${
+                      fulfillmentMethod === "pickup"
+                        ? "bg-black text-white shadow-sm"
+                        : "text-stone-600 hover:bg-white hover:text-black"
+                    }`}
+                  >
+                    <Store className="h-4 w-4" />
+                    Pickup
+                  </button>
+                </div>
+              </div>
+
               <Field
                 label="Full Name"
                 name="fullName"
@@ -215,7 +267,7 @@ export default function CheckoutPage() {
                 required
               />
 
-              {shippingZones.length > 0 ? (
+              {fulfillmentMethod === "delivery" && shippingZones.length > 0 ? (
                 <div className="md:col-span-2">
                   <label
                     htmlFor="shippingZone"
@@ -245,24 +297,26 @@ export default function CheckoutPage() {
                 </div>
               ) : null}
 
-              <div className="md:col-span-2">
-                <label
-                  htmlFor="address"
-                  className="mb-2 block text-sm font-medium text-black"
-                >
-                  Delivery Address
-                </label>
-                <textarea
-                  id="address"
-                  name="address"
-                  value={form.address}
-                  onChange={handleChange}
-                  placeholder="Enter full delivery address"
-                  rows={5}
-                  required
-                  className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-black/30"
-                />
-              </div>
+              {fulfillmentMethod === "delivery" ? (
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="address"
+                    className="mb-2 block text-sm font-medium text-black"
+                  >
+                    Delivery Address
+                  </label>
+                  <textarea
+                    id="address"
+                    name="address"
+                    value={form.address}
+                    onChange={handleChange}
+                    placeholder="Enter full delivery address"
+                    rows={5}
+                    required
+                    className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-black/30"
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -322,9 +376,11 @@ export default function CheckoutPage() {
 
               <SummaryRow
                 label={
-                  selectedShippingZone
-                    ? `Shipping (${selectedShippingZone.name})`
-                    : "Shipping"
+                  fulfillmentMethod === "pickup"
+                    ? "Pickup"
+                    : selectedShippingZone
+                      ? `Shipping (${selectedShippingZone.name})`
+                      : "Shipping"
                 }
                 value={
                   shippingFee === 0

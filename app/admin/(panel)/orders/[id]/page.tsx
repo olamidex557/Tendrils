@@ -222,8 +222,16 @@ export default async function AdminOrderDetailsPage({ params }: PageProps) {
 
           <CardShell
             icon={<MapPin className="h-5 w-5 text-black" />}
-            title="Shipping Address"
-            subtitle="Delivery destination."
+            title={
+              orderDetails.fulfillmentMethod === "pickup"
+                ? "Pickup"
+                : "Shipping Address"
+            }
+            subtitle={
+              orderDetails.fulfillmentMethod === "pickup"
+                ? "Customer chose pickup at checkout."
+                : "Delivery destination."
+            }
           >
             <p className="text-sm leading-7 text-stone-600">
               {orderDetails.shippingAddress ?? "No address provided."}
@@ -240,8 +248,16 @@ export default async function AdminOrderDetailsPage({ params }: PageProps) {
               value={money(orderDetails.subtotal, orderDetails.currency)}
             />
             <SummaryLine
-              label="Shipping"
-              value={money(orderDetails.shippingFee, orderDetails.currency)}
+              label={
+                orderDetails.fulfillmentMethod === "pickup"
+                  ? "Pickup"
+                  : "Shipping"
+              }
+              value={
+                orderDetails.fulfillmentMethod === "pickup"
+                  ? "Free"
+                  : money(orderDetails.shippingFee, orderDetails.currency)
+              }
             />
             <SummaryLine
               label="Discount"
@@ -269,6 +285,9 @@ export default async function AdminOrderDetailsPage({ params }: PageProps) {
               <p>
                 • Fulfillment status:{" "}
                 {formatStatus(orderDetails.fulfillmentStatus)}
+              </p>
+              <p>
+                • Method: {formatStatus(orderDetails.fulfillmentMethod)}
               </p>
             </div>
           </CardShell>

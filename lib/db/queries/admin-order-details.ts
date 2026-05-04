@@ -11,6 +11,7 @@ export type AdminOrderDetails = {
   status: string;
   paymentStatus: string;
   fulfillmentStatus: string;
+  fulfillmentMethod: "delivery" | "pickup";
   currency: string;
   subtotal: number;
   shippingFee: number;
@@ -41,6 +42,7 @@ export const getAdminOrderById = cache(
         status,
         payment_status,
         fulfillment_status,
+        fulfillment_method,
         currency,
         subtotal,
         shipping_fee,
@@ -76,6 +78,7 @@ export const getAdminOrderById = cache(
       status: data.status ?? "pending",
       paymentStatus: data.payment_status ?? "pending",
       fulfillmentStatus: data.fulfillment_status ?? "unfulfilled",
+      fulfillmentMethod: data.fulfillment_method ?? "delivery",
       currency: data.currency ?? "NGN",
       subtotal: Number(data.subtotal ?? 0),
       shippingFee: Number(data.shipping_fee ?? 0),

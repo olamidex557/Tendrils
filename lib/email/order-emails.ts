@@ -13,6 +13,7 @@ type OrderEmailData = {
   customerEmail: string;
   total: number;
   address: string;
+  fulfillmentMethod?: "delivery" | "pickup";
   items: OrderEmailItem[];
 };
 
@@ -78,6 +79,8 @@ function baseEmailLayout(content: string) {
 }
 
 export async function sendCustomerOrderConfirmationEmail(order: OrderEmailData) {
+  const isPickup = order.fulfillmentMethod === "pickup";
+
   return sendEmail({
     to: order.customerEmail,
     subject: `Order Confirmed — ${order.orderNumber}`,
@@ -95,8 +98,8 @@ export async function sendCustomerOrderConfirmationEmail(order: OrderEmailData) 
           <strong style="color:#111111;">Order Number:</strong> ${escapeHtml(order.orderNumber)}
         </p>
         <p style="margin:0;font-size:14px;line-height:22px;color:#555555;">
-          <strong style="color:#111111;">Delivery Address:</strong><br/>
-          ${escapeHtml(order.address)}
+          <strong style="color:#111111;">${isPickup ? "Fulfillment" : "Delivery Address"}:</strong><br/>
+          ${escapeHtml(isPickup ? "Pickup" : order.address)}
         </p>
       </div>
 
@@ -130,6 +133,7 @@ export async function sendCustomerOrderConfirmationEmail(order: OrderEmailData) 
 
 export async function sendAdminNewOrderEmail(order: OrderEmailData) {
   const adminEmail = process.env.ADMIN_EMAIL;
+  const isPickup = order.fulfillmentMethod === "pickup";
 
   if (!adminEmail) {
     console.warn("ADMIN_EMAIL is missing. Admin email skipped.");
@@ -155,8 +159,8 @@ export async function sendAdminNewOrderEmail(order: OrderEmailData) {
           <strong style="color:#111111;">Email:</strong> ${escapeHtml(order.customerEmail)}
         </p>
         <p style="margin:0;font-size:14px;line-height:22px;color:#555555;">
-          <strong style="color:#111111;">Address:</strong><br/>
-          ${escapeHtml(order.address)}
+          <strong style="color:#111111;">${isPickup ? "Fulfillment" : "Address"}:</strong><br/>
+          ${escapeHtml(isPickup ? "Pickup" : order.address)}
         </p>
       </div>
 

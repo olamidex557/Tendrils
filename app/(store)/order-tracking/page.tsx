@@ -18,6 +18,7 @@ type TrackedOrder = {
   status: string;
   paymentStatus: string;
   fulfillmentStatus: string;
+  fulfillmentMethod: "delivery" | "pickup";
   currency: string;
   subtotal: number;
   shippingFee: number;
@@ -146,7 +147,7 @@ progress.
                 name="orderNumber"
                 value={form.orderNumber}
                 onChange={handleChange}
-                placeholder="e.g. AJK-1776545568154"
+                placeholder="e.g. 19f0w"
               />
               <Field
                 label="Email Address"
@@ -238,7 +239,18 @@ progress.
             </div>
 
             <div className="space-y-6">
-              <Card title="Delivery Information" subtitle="Shipping details provided during checkout.">
+              <Card
+                title={
+                  order.fulfillmentMethod === "pickup"
+                    ? "Pickup Information"
+                    : "Delivery Information"
+                }
+                subtitle={
+                  order.fulfillmentMethod === "pickup"
+                    ? "Customer details for this pickup order."
+                    : "Shipping details provided during checkout."
+                }
+              >
                 <InfoRow icon={<MapPin className="h-5 w-5 text-black" />} label="Name" value={order.shippingName || "—"} 
 />
                 <InfoRow icon={<CheckCircle2 className="h-5 w-5 text-black" />} label="Email" value={order.shippingEmail 
@@ -246,7 +258,11 @@ progress.
                 <InfoRow icon={<Truck className="h-5 w-5 text-black" />} label="Phone" value={order.shippingPhone || 
 "—"} />
                 <div className="rounded-[1.5rem] bg-stone-50 p-4">
-                  <p className="text-sm font-medium text-black">Address</p>
+                  <p className="text-sm font-medium text-black">
+                    {order.fulfillmentMethod === "pickup"
+                      ? "Fulfillment"
+                      : "Address"}
+                  </p>
                   <p className="mt-2 text-sm leading-7 text-stone-600">
                     {order.shippingAddress || "—"}
                   </p>
@@ -255,7 +271,18 @@ progress.
 
               <Card title="Payment Summary" subtitle="Breakdown of your order total.">
                 <SummaryRow label="Subtotal" value={money(order.subtotal, order.currency)} />
-                <SummaryRow label="Shipping Fee" value={money(order.shippingFee, order.currency)} />
+                <SummaryRow
+                  label={
+                    order.fulfillmentMethod === "pickup"
+                      ? "Pickup"
+                      : "Shipping Fee"
+                  }
+                  value={
+                    order.fulfillmentMethod === "pickup"
+                      ? "Free"
+                      : money(order.shippingFee, order.currency)
+                  }
+                />
                 <SummaryRow label="Discount" value={money(order.discountAmount, order.currency)} />
                 <SummaryRow
                   label="Total"

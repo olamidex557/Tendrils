@@ -81,6 +81,7 @@ async function sendOrderEmails(order: {
   shipping_name: string | null;
   shipping_email: string | null;
   shipping_address: string | null;
+  fulfillment_method?: "delivery" | "pickup" | null;
   total: number | null;
 }) {
   if (!order.shipping_email) return;
@@ -101,6 +102,7 @@ async function sendOrderEmails(order: {
     customerEmail: order.shipping_email,
     total: Number(order.total ?? 0),
     address: order.shipping_address ?? "",
+    fulfillmentMethod: order.fulfillment_method ?? "delivery",
     items: (orderItems ?? []).map((item) => ({
       product_name: item.product_name,
       quantity: Number(item.quantity ?? 0),
@@ -171,6 +173,7 @@ export async function POST(req: Request) {
         shipping_name,
         shipping_email,
         shipping_address,
+        fulfillment_method,
         total
       `)
       .eq("order_number", reference)
