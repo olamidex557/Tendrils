@@ -227,7 +227,6 @@ export async function createCheckoutSession(input: CheckoutInput) {
       status: "pending",
       payment_status: "pending",
       fulfillment_status: "unfulfilled",
-      fulfillment_method: fulfillmentMethod,
       currency: "NGN",
       subtotal,
       shipping_fee: shippingFee,

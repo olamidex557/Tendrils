@@ -29,7 +29,6 @@ export async function POST(req: Request) {
         status,
         payment_status,
         fulfillment_status,
-        fulfillment_method,
         currency,
         subtotal,
         shipping_fee,
@@ -71,7 +70,8 @@ export async function POST(req: Request) {
       status: data.status ?? "pending",
       paymentStatus: data.payment_status ?? "pending",
       fulfillmentStatus: data.fulfillment_status ?? "unfulfilled",
-      fulfillmentMethod: data.fulfillment_method ?? "delivery",
+      fulfillmentMethod:
+        data.shipping_address === "Pickup" ? "pickup" : "delivery",
       currency: data.currency ?? "NGN",
       subtotal: Number(data.subtotal ?? 0),
       shippingFee: Number(data.shipping_fee ?? 0),
